@@ -50,7 +50,9 @@ examples, and rationale are non-normative unless they reference a requirement.
 | Sub-Issue | A native containment relationship used to decompose tracked work. It is not an agent delegation unit. |
 | Issue Dependency | A native blocking relationship between tracked work items. It is separate from lifecycle status. |
 | Project Status | The lifecycle phase of tracked work in the associated GitHub User Project. |
+| Dedicated User Project | The native GitHub User Project managed for exactly one target repository by the Core Profile. |
 | Pull Request | A repository change and integration artifact, normally linked to a tracked Issue. |
+| Close reason | The native GitHub Issue close outcome: `Completed` for successful completion or `Not planned` for intentional non-completion. |
 | Authorization envelope | The approved scope, acceptance conditions, and constraints within which an executor may make implementation decisions. |
 | Managed state | Native GitHub configuration that the Core Profile declares and the Provisioning Capability is responsible for reconciling. |
 | Unrelated configuration | Existing target configuration outside managed state. |
@@ -108,7 +110,7 @@ responsibility, not whether its holder is human or an AI agent.
 | FR-002 | Work decomposition MUST use the Sub-Issue relationship without assigning delegation semantics to that relationship. | Inspect a parent/child work scenario and documentation. |
 | FR-003 | Blocking between work items MUST be represented as an Issue Dependency and MUST NOT be encoded as a lifecycle status. | Inspect a blocked-work scenario and its project status. |
 | FR-004 | The standard Project Status values MUST be `Backlog`, `Ready`, `In Progress`, `Review`, and `Done`. | Inspect the provisioned Project Status field. |
-| FR-005 | The lifecycle MUST permit backward movement for rework and MUST permit completion without `Review` when review is not required by the work's authorization envelope. | Exercise and record both lifecycle scenarios. |
+| FR-005 | The lifecycle MUST permit backward movement between non-terminal phases for rework and MUST permit completion without `Review` when review is not required by the work's authorization envelope. | Exercise and record both lifecycle scenarios. |
 | FR-006 | When a tracked Issue exists, that Issue MUST remain the canonical work-state holder; a Pull Request MUST be treated as a linked change and integration artifact. | Inspect a linked Issue and Pull Request through completion. |
 | FR-007 | The workflow MUST define completion in terms of the tracked work's acceptance conditions and required verification, not merely creation or merge of a Pull Request. | Review completion documentation and evidence for a completed scenario. |
 | FR-008 | The same workflow semantics and durable records MUST be usable whether the executor is a human or an AI agent. | Execute equivalent scenarios with human and AI-assisted participation. |
@@ -131,6 +133,17 @@ responsibility, not whether its holder is human or an AI agent.
 | FR-015 | The Core Profile MUST use native GitHub Issues, Sub-Issues, Issue Dependencies, Projects, and Pull Requests where those capabilities implement the required semantics. | Inspect a provisioned target and workflow scenarios. |
 | FR-016 | The Core Profile MUST be usable without agent-, model-, token-, cost-, or difficulty-specific product metadata. | Inspect all required fields and operating documentation. |
 | FR-017 | The Core Profile MUST define which GitHub objects and properties are managed and which existing target configuration is outside its responsibility. | Inspect the profile or provisioning contract. |
+| FR-028 | The managed Core Profile state MUST include enabled GitHub Issues; one Dedicated User Project; the Project Status values `Backlog`, `Ready`, `In Progress`, `Review`, and `Done`; and the labels `needs-decision` and `blocked`. | Provision a clean supported target and inspect the managed repository and Project state. |
+| FR-029 | In the verified v0.1.0 environment, one target repository MUST map to one Dedicated User Project owned by the same personal account. Provisioning MUST NOT automatically convert or repurpose an arbitrary existing Project as that Dedicated User Project. | Inspect project ownership and association on a supported target; provision a target containing an unrelated existing Project. |
+| FR-030 | The Core Profile MUST automatically add tracked Issues from the target repository to its Dedicated User Project. | Create a tracked Issue and inspect the Project items. |
+| FR-031 | A tracked Issue newly added to the Dedicated User Project MUST enter `Backlog` unless an authorized workflow action assigns another applicable status. | Create and add a tracked Issue, then inspect its initial Project Status. |
+| FR-032 | Closing a tracked Issue MUST transition its Dedicated User Project Status to `Done`. | Close a tracked Issue and inspect its Project Status. |
+| FR-033 | When a tracked Issue exists, a Pull Request MUST NOT be added or retained as a duplicate canonical work item in the Dedicated User Project. | Inspect the Project after creating a Pull Request linked to a tracked Issue. |
+| FR-034 | A Pull Request that implements tracked work MUST link to the authorizing Issue. | Inspect linked Issue and Pull Request metadata for an implementation scenario. |
+| FR-035 | If merging a Pull Request closes its linked Issue, it MUST do so only when that Issue's acceptance conditions and required verification are satisfied. | Review a merged Pull Request and linked Issue completion evidence. |
+| FR-036 | `Done` MUST be the terminal Project Status phase for tracked work. | Inspect the lifecycle definition and a completed or intentionally stopped work item. |
+| FR-037 | A successfully completed tracked Issue MUST use the native close reason `Completed`; a cancelled or intentionally non-completed tracked Issue MUST use `Not planned`. | Close representative successful and intentionally stopped Issues, then inspect close reasons. |
+| FR-038 | `Done` MUST NOT by itself be treated as proof that a tracked Issue's acceptance conditions were successfully satisfied. | Compare a `Done` Issue closed as `Not planned` with completion evidence for an Issue closed as `Completed`. |
 
 ### 6.4 Provisioning Capability
 
@@ -202,7 +215,7 @@ because they appear in the implementation.
 | RI-003 | The Core Profile MUST NOT require a `github-workflow`-specific runtime or configuration file in the target repository. | Inspect a conforming target repository. |
 | RI-004 | Durable workflow state MUST remain represented by native GitHub capabilities in the target environment. | Inspect work state after provisioning tooling is unavailable. |
 | RI-005 | Continued operation MUST NOT depend on an external `github-workflow` task database or other hidden service state. | Complete a normal lifecycle scenario using only the target's documented GitHub state. |
-| RI-006 | Dependence on the native GitHub User Project associated with the Core Profile is permitted and does not violate repository independence. | Confirm the only non-repository workflow dependency is documented native GitHub state. |
+| RI-006 | Dependence on the Dedicated User Project associated with the Core Profile is permitted and does not violate repository independence. | Confirm the only non-repository workflow dependency is documented native GitHub state. |
 
 ## 11. Supported-environment boundary
 
@@ -216,7 +229,7 @@ The verified v0.1.0 support target is deliberately narrow.
 | GitHub plan | Capabilities available on GitHub Free |
 | Team shape | Solo maintainers and small teams |
 | Development mode | Human and AI-assisted development, without a required agent product |
-| Project topology | One target repository with its associated native User Project |
+| Project topology | One target repository ↔ one Dedicated User Project, owned by the same personal account |
 
 Organization-owned repositories, private repositories, GitHub Enterprise Server,
 Enterprise Managed Users, cross-owner projects, and shared multi-repository
@@ -236,10 +249,10 @@ or both.
 
 | ID | Release criterion | Principal requirements | Minimum evidence |
 | --- | --- | --- | --- |
-| SC-001 | Clean Core Profile provisioning | FR-013–FR-022 | Successful inspect, plan, apply, and verify record on a clean supported target. |
+| SC-001 | Clean Core Profile provisioning | FR-013–FR-022, FR-028–FR-033 | Successful inspect, plan, apply, and verify record on a clean supported target that confirms enabled Issues, the Dedicated User Project, managed labels, Status values, and Project automation. |
 | SC-002 | Idempotent second run | FR-023 | A second unchanged run reports no unnecessary changes. |
-| SC-003 | Preservation of unrelated configuration | FR-017, FR-024–FR-026 | Before/after evidence from a target containing unrelated and compatible existing configuration. |
-| SC-004 | Normal tracked-work lifecycle | FR-001, FR-004–FR-007 | One tracked Issue moves through the applicable lifecycle and meets its completion conditions. |
+| SC-003 | Preservation of unrelated configuration | FR-017, FR-024–FR-026, FR-029 | Before/after evidence from a target containing unrelated and compatible existing configuration, including an arbitrary existing Project. |
+| SC-004 | Normal tracked-work lifecycle | FR-001, FR-004–FR-007, FR-030–FR-038 | One tracked Issue moves through the applicable lifecycle, is linked to its implementing Pull Request, and is closed with the appropriate close reason. |
 | SC-005 | Sub-Issue decomposition | FR-002, FR-013, FR-015 | A parent Issue is decomposed with native Sub-Issues without delegation semantics. |
 | SC-006 | Native dependency handling | FR-003, FR-013, FR-015 | A blocking relationship is represented natively and independently of Project Status. |
 | SC-007 | Authority-boundary behavior | FR-009–FR-012 | Evidence of autonomous in-envelope execution and escalation of an out-of-envelope decision. |
