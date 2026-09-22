@@ -72,6 +72,11 @@ Create a native Sub-Issue only when newly discovered work has independent
 tracking value. A Sub-Issue is work decomposition and containment; it is not an
 agent delegation unit, and one executor may process multiple work items.
 
+Creating a Sub-Issue records independently trackable discovered work; it does
+not by itself authorize that work's execution. Starting independent new work
+requires authority already granted by the current authorization envelope or
+separate authorization.
+
 Create a native Issue Dependency only for a real blocking relationship. Do not
 use dependencies for relatedness, artificial serialization, or ordinary
 implementation steps. Use the `blocked` label for an external blocker that
@@ -98,6 +103,8 @@ boundaries:
 - material scope or acceptance-condition changes;
 - public-contract changes;
 - security or governance boundary changes;
+- starting independent new work without authority from the current authorization
+  envelope or separate authorization;
 - release authority; or
 - destructive changes to unrelated configuration.
 
