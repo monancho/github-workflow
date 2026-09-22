@@ -51,6 +51,7 @@ examples, and rationale are non-normative unless they reference a requirement.
 | Issue Dependency | A native blocking relationship between tracked work items. It is separate from lifecycle status. |
 | Project Status | The lifecycle phase of tracked work in the associated GitHub User Project. |
 | Dedicated User Project | The native GitHub User Project managed for exactly one target repository by the Core Profile. |
+| Project membership | Representation of a tracked Issue as an item in its Dedicated User Project. |
 | Pull Request | A repository change and integration artifact, normally linked to a tracked Issue. |
 | Close reason | The native GitHub Issue close outcome: `Completed` for successful completion or `Not planned` for intentional non-completion. |
 | Authorization envelope | The approved scope, acceptance conditions, and constraints within which an executor may make implementation decisions. |
@@ -135,7 +136,7 @@ responsibility, not whether its holder is human or an AI agent.
 | FR-017 | The Core Profile MUST define which GitHub objects and properties are managed and which existing target configuration is outside its responsibility. | Inspect the profile or provisioning contract. |
 | FR-028 | The managed Core Profile state MUST include enabled GitHub Issues; one Dedicated User Project; the Project Status values `Backlog`, `Ready`, `In Progress`, `Review`, and `Done`; and the labels `needs-decision` and `blocked`. | Provision a clean supported target and inspect the managed repository and Project state. |
 | FR-029 | In the verified v0.1.0 environment, one target repository MUST map to one Dedicated User Project owned by the same personal account. Provisioning MUST NOT automatically convert or repurpose an arbitrary existing Project as that Dedicated User Project. | Inspect project ownership and association on a supported target; provision a target containing an unrelated existing Project. |
-| FR-030 | The Core Profile MUST automatically add tracked Issues from the target repository to its Dedicated User Project. | Create a tracked Issue and inspect the Project items. |
+| FR-030 | Every tracked Issue participating in lifecycle management MUST have Project membership in its Dedicated User Project. | Create and inspect a tracked Issue and its Project item. |
 | FR-031 | A tracked Issue newly added to the Dedicated User Project MUST enter `Backlog` unless an authorized workflow action assigns another applicable status. | Create and add a tracked Issue, then inspect its initial Project Status. |
 | FR-032 | Closing a tracked Issue MUST transition its Dedicated User Project Status to `Done`. | Close a tracked Issue and inspect its Project Status. |
 | FR-033 | When a tracked Issue exists, a Pull Request MUST NOT be added or retained as a duplicate canonical work item in the Dedicated User Project. | Inspect the Project after creating a Pull Request linked to a tracked Issue. |
@@ -144,16 +145,18 @@ responsibility, not whether its holder is human or an AI agent.
 | FR-036 | `Done` MUST be the terminal Project Status phase for tracked work. | Inspect the lifecycle definition and a completed or intentionally stopped work item. |
 | FR-037 | A successfully completed tracked Issue MUST use the native close reason `Completed`; a cancelled or intentionally non-completed tracked Issue MUST use `Not planned`. | Close representative successful and intentionally stopped Issues, then inspect close reasons. |
 | FR-038 | `Done` MUST NOT by itself be treated as proof that a tracked Issue's acceptance conditions were successfully satisfied. | Compare a `Done` Issue closed as `Not planned` with completion evidence for an Issue closed as `Completed`. |
+| FR-039 | The Core Profile SHOULD use native GitHub Auto-add for Project membership when it is available and compatible with the supported environment, but Auto-add MUST NOT be the sole required mechanism for satisfying FR-030. | Inspect the profile and provision a supported target with and without Auto-add availability. |
+| FR-040 | Missing required Project membership MUST be detectable and repairable through native Auto-add, provisioning reconciliation, executor reconciliation, or explicit addition. | Remove a required Project item, detect the absence, repair it through an allowed mechanism, and inspect the result. |
 
 ### 6.4 Provisioning Capability
 
 | ID | Requirement | Verification |
 | --- | --- | --- |
 | FR-018 | Provisioning MUST follow the ordered contract `Inspect → Plan → Apply → Verify`. | Observe a complete provisioning run. |
-| FR-019 | Inspect MUST discover enough current target state to distinguish missing, compatible, conflicting, managed, and unrelated configuration before mutation. | Run against targets containing each state category. |
+| FR-019 | Inspect MUST discover enough current target state, including required Project membership, to distinguish missing, compatible, conflicting, managed, and unrelated configuration before mutation. | Run against targets containing each state category. |
 | FR-020 | Plan MUST describe the proposed changes without mutating the target. | Compare target state before and after planning and inspect plan output. |
-| FR-021 | Apply MUST make only the changes required to reconcile managed state with the Core Profile and the approved plan. | Compare the plan, applied operations, and resulting state. |
-| FR-022 | Verify MUST compare the resulting target state with the Core Profile and report whether reconciliation succeeded. | Introduce conforming and non-conforming outcomes and inspect reports. |
+| FR-021 | Apply MUST make only the changes required to reconcile managed state, including missing required Project membership, with the Core Profile and the approved plan. | Compare the plan, applied operations, and resulting state. |
+| FR-022 | Verify MUST compare the resulting target state, including required Project membership, with the Core Profile and report whether reconciliation succeeded. | Introduce conforming and non-conforming outcomes and inspect reports. |
 | FR-023 | A successful second provisioning run against an unchanged conforming target MUST make no unnecessary changes. | Run provisioning twice and compare the second plan and applied operations. |
 | FR-024 | Provisioning MUST preserve unrelated existing configuration. | Seed unrelated configuration, provision, and compare before and after state. |
 | FR-025 | When compatible native configuration already exists, provisioning MUST reuse or reconcile it instead of creating an unnecessary duplicate. | Provision a target with compatible pre-existing objects and inspect identity and changes. |
@@ -249,7 +252,7 @@ or both.
 
 | ID | Release criterion | Principal requirements | Minimum evidence |
 | --- | --- | --- | --- |
-| SC-001 | Clean Core Profile provisioning | FR-013–FR-022, FR-028–FR-033 | Successful inspect, plan, apply, and verify record on a clean supported target that confirms enabled Issues, the Dedicated User Project, managed labels, Status values, and Project automation. |
+| SC-001 | Clean Core Profile provisioning | FR-013–FR-022, FR-028–FR-033, FR-039–FR-040 | Successful inspect, plan, apply, and verify record on a clean supported target that confirms enabled Issues, the Dedicated User Project, managed labels, Status values, and required Project membership without requiring Auto-add as the sole mechanism. |
 | SC-002 | Idempotent second run | FR-023 | A second unchanged run reports no unnecessary changes. |
 | SC-003 | Preservation of unrelated configuration | FR-017, FR-024–FR-026, FR-029 | Before/after evidence from a target containing unrelated and compatible existing configuration, including an arbitrary existing Project. |
 | SC-004 | Normal tracked-work lifecycle | FR-001, FR-004–FR-007, FR-030–FR-038 | One tracked Issue moves through the applicable lifecycle, is linked to its implementing Pull Request, and is closed with the appropriate close reason. |

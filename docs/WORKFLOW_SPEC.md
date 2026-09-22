@@ -15,6 +15,7 @@ language, runtime, CLI, storage model, or backend architecture.
 | Sub-Issue | Native work decomposition and containment. It is not agent delegation. |
 | Issue Dependency | A native relationship that records a real blocking relationship between tracked work items. |
 | Dedicated User Project | The native User Project dedicated to exactly one target repository. |
+| Project membership | Representation of a tracked Issue as an item in its Dedicated User Project. |
 | Project Status | The lifecycle phase held in the Dedicated User Project. |
 | Pull Request | A linked repository-change and integration artifact, not the canonical work-state record. |
 | Authorization envelope | Approved scope, acceptance conditions, and constraints for execution. |
@@ -112,15 +113,20 @@ For the verified v0.1.0 environment, managed state includes:
 - Project Status values exactly `Backlog`, `Ready`, `In Progress`, `Review`, and
   `Done`;
 - labels `needs-decision` and `blocked`;
-- automatic addition of tracked Issues from the target repository to its
-  Dedicated User Project;
+- Project membership for every tracked Issue participating in lifecycle
+  management;
 - initial `Backlog` for newly added tracked Issues, unless an authorized workflow
   action assigns another applicable status; and
 - transition to `Done` when a tracked Issue is closed.
 
-An arbitrary existing Project is not automatically converted or repurposed as the
-Dedicated User Project. Pull Requests are not added or retained as duplicate
-canonical Project work items for tracked Issues.
+Native GitHub Auto-add is the preferred membership convenience when it is
+available and compatible with the supported environment. It is not the sole
+required membership mechanism: provisioning reconciliation, executor
+reconciliation, or explicit addition may establish or repair Project membership.
+An absent required Project item is non-conforming managed state and must be
+detectable and repairable. An arbitrary existing Project is not automatically
+converted or repurposed as the Dedicated User Project. Pull Requests are not
+added or retained as duplicate canonical Project work items for tracked Issues.
 
 ## 8. Provisioning behavior
 
@@ -131,10 +137,11 @@ Inspect → Plan → Apply → Verify
 ```
 
 Inspect discovers enough current state to identify missing managed state,
-compatible existing state, conflicting or ambiguous state, and unrelated
-configuration. Plan is observable and makes no mutation. Apply makes only the
-minimal changes needed for the approved plan. Verify compares the result to the
-Core Profile and reports success or failure.
+including required Project membership, compatible existing state, conflicting or
+ambiguous state, and unrelated configuration. Plan is observable and makes no
+mutation. Apply makes only the minimal changes needed for the approved plan,
+including repairing missing Project membership through an allowed mechanism.
+Verify compares the result to the Core Profile and reports success or failure.
 
 Compatible native state is reused or reconciled rather than duplicated.
 Conflicting or ambiguous state is surfaced rather than silently overwritten.
@@ -164,7 +171,7 @@ Organization-owned repositories, private repositories, enterprise environments,
 cross-owner Projects, and shared multi-repository Projects are not supported
 claims.
 
-This specification materially covers FR-001–FR-038, NFR-001–NFR-009,
+This specification materially covers FR-001–FR-040, NFR-001–NFR-009,
 CON-001–CON-005, PC-001–PC-003, RI-001–RI-006, and
 SUP-001–SUP-003. Requirement changes follow the traceability rules in
 `REQUIREMENTS.md`; examples and implementation possibilities are not additional
