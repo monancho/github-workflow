@@ -13,12 +13,28 @@ canonical repository documentation. The Issue must make the objective, scope,
 acceptance or completion conditions, constraints, and authority boundary clear
 enough to execute.
 
-## Planning and records
+## Planning, records, and working context
 
-Executors form an internal plan appropriate to the work. Do not create standalone
-GOAL, PLAN, PROGRESS, EXECUTION, or EVIDENCE files unless an Issue explicitly
-requires a durable artifact of that kind. Use the Issue, linked Pull Request, and
-native GitHub records for durable work state and evidence.
+Executors form a session-local implementation plan appropriate to the work. Do
+not require or create standalone GOAL, PLAN, PROGRESS, EXECUTION, or EVIDENCE
+files for every Issue. The Issue and Sub-Issues hold tracked work and
+decomposition; the Dedicated User Project holds live work state; and linked Pull
+Requests, review, and Actions hold change and verification history.
+
+For long-running, multi-session, handoff-sensitive, or context-loss-prone work,
+an executor MAY maintain one Issue-scoped, non-canonical working-context artifact
+when it materially reduces continuation risk. It may contain the current plan,
+checkpoint, material working decisions, blockers or open questions, next action,
+and verification performed or pending. It does not replace the Issue, Project
+state, canonical documentation, specifications, or Pull Request evidence.
+
+`docs/` is durable human-readable authority. Specifications are durable
+implementation-facing contracts, not task-plan storage. Reusable curated research
+may be retained as Resource or reference material; it is evidence and input, not
+product authority. Raw search and session logs are not automatically durable
+resources. On completion, promote durable information to the appropriate
+canonical document, specification, ADR, or Pull Request evidence; transient
+working context may be removed.
 
 ## Repository-change workflow
 
