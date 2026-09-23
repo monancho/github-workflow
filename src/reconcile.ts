@@ -3,7 +3,8 @@ import type { ApplyReport, GitHubPort, InspectionReport, PlannedOperation, Recon
 import { labels } from "./profile.js";
 
 function sameRequest(request: ReconciliationRequest, plan: ReconciliationPlan): boolean {
-  return plan.resourceScope === "managed-labels" &&
+  return plan.phase === "plan" && plan.resourceScope === "managed-labels" &&
+    typeof plan.inspectionFingerprint === "string" && plan.inspectionFingerprint.length > 0 &&
     fingerprint(request) === plan.requestFingerprint &&
     fingerprint(request.target) === fingerprint(plan.target) &&
     fingerprint(request.profile) === fingerprint(plan.profile) &&
@@ -11,7 +12,7 @@ function sameRequest(request: ReconciliationRequest, plan: ReconciliationPlan): 
 }
 
 export function plan(request: ReconciliationRequest, inspection: InspectionReport): ReconciliationPlan {
-  if (fingerprint(request.target) !== fingerprint(inspection.target) ||
+  if (inspection.phase !== "inspect" || fingerprint(request.target) !== fingerprint(inspection.target) ||
       fingerprint(request.profile) !== fingerprint(inspection.profile) || inspection.resourceScope !== "managed-labels") {
     throw new Error("Inspection does not match request");
   }
@@ -117,6 +118,7 @@ export async function verify(port: GitHubPort, request: ReconciliationRequest, p
       applied.outcome === "blocked";
   const bindingsValid = sameRequest(request, planned) && applied.phase === "apply" && validOutcomes &&
     applied.resourceScope === "managed-labels" && applied.planFingerprint === planned.planFingerprint &&
+    typeof applied.preflightInspectionFingerprint === "string" && applied.preflightInspectionFingerprint.length > 0 &&
     applied.operations.length === planned.operations.length &&
     applied.operations.every((entry, index) => fingerprint(entry.operation) === fingerprint(planned.operations[index]));
   if (!bindingsValid) {

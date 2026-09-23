@@ -102,6 +102,9 @@ test("fresh Verify rejects a false Apply success claim", async () => {
   assert.equal((await verify(port, request, planned, fabricated)).outcome, "non-conforming");
   fabricated.planFingerprint = "stale";
   assert.equal((await verify(port, request, planned, fabricated)).outcome, "unverifiable");
+  fabricated.planFingerprint = planned.planFingerprint;
+  fabricated.preflightInspectionFingerprint = "";
+  assert.equal((await verify(port, request, planned, fabricated)).outcome, "unverifiable");
 });
 
 test("unsupported targets do not produce executable plans", async () => {
