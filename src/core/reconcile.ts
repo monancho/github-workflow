@@ -256,9 +256,22 @@ export async function verify(port: GitHubPort, request: ReconciliationRequest, p
         ["unverifiable", "ambiguous"].includes(observation.classification) ? "unverifiable" : "non-conforming",
       safeDiagnostics: observation.safeDiagnostics,
     }));
+    const required = [identity(request.target, "repository-issues"), identity(request.target, "dedicated-project"),
+      identity(request.target, "project-statuses"), ...labels.map(label => identity(request.target, "managed-label", undefined, label.name))];
+    let topologyValid = true;
+    for (const selected of request.trackedIssues) {
+      const membership = observationFor(fresh, identity(request.target, "issue-project-membership", selected.number));
+      const issueState = membership && record(membership.actual) ? membership.actual.issueState : undefined;
+      if (issueState !== "OPEN" && issueState !== "CLOSED") topologyValid = false;
+      required.push(identity(request.target, "issue-project-membership", selected.number),
+        identity(request.target, issueState === "CLOSED" ? "closed-issue-project-status" : "issue-initial-project-status", selected.number));
+    }
+    const present = new Set(fresh.resources.map(item => `${item.identity.kind}:${item.identity.key}`));
+    topologyValid = topologyValid && present.size === required.length &&
+      required.every(item => present.has(`${item.kind}:${item.key}`));
     if (fresh.outcome === "failed") report.outcome = "failed";
     else if (fresh.outcome === "unsupported") report.outcome = "unsupported";
-    else if (fresh.outcome === "unverifiable" || planned.outcome === "blocked" || !["applied", "no-change"].includes(applied.outcome)) report.outcome = "unverifiable";
+    else if (fresh.outcome === "unverifiable" || !topologyValid || planned.outcome === "blocked" || !["applied", "no-change"].includes(applied.outcome)) report.outcome = "unverifiable";
     else if (planned.initialStatusExpectations.some(expectation => {
       const issue = request.trackedIssues.find(item => expectation.resource.key.includes(`:issue:${item.number}:`));
       const nowClosed = issue && fresh.resources.some(item => item.identity.kind === "closed-issue-project-status" && item.identity.key === expectation.resource.key);

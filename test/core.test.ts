@@ -245,3 +245,22 @@ test("malformed serialized phase bindings return structured non-success", async 
   assert.equal((await verify(port, request, planned, malformedApply)).outcome, "unverifiable");
   assert.deepEqual(port.writes, []);
 });
+
+test("Verify rejects an incomplete fresh resource set", async () => {
+  const port = new MemoryPort();
+  port.issuesEnabled = port.projectExists = true;
+  port.statusOptions = [...statuses];
+  port.labelNames.push(...labels.map(label => label.name));
+  port.issues.set(15, { closed: false, member: true, status: "Review" });
+  const request = requestFor(target, [{ number: 15 }]);
+  const planned = plan(request, await port.inspectManagedState(request));
+  const applied = await apply(port, request, planned);
+  const inspect = port.inspectManagedState.bind(port);
+  port.inspectManagedState = async selected => {
+    const report = await inspect(selected);
+    report.resources = report.resources.filter(item => item.identity.kind !== "issue-initial-project-status");
+    report.stateFingerprint = fingerprint(report.resources);
+    return report;
+  };
+  assert.equal((await verify(port, request, planned, applied)).outcome, "unverifiable");
+});
