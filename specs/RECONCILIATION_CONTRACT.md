@@ -143,12 +143,14 @@ not the resource's sole satisfying mechanism. A missing membership remains a
 managed delta until an allowed repair is verified.
 
 Lifecycle status effects are explicit event-scoped resources. When a plan adds
-an Issue to the Dedicated User Project, it also declares an
+an open Issue to the Dedicated User Project, it also declares an
 `issue-initial-project-status` resource with desired status `Backlog`, unless
-that Issue has an `authorizedInitialStatus`. When Inspect finds a selected Issue
-closed, it declares a `closed-issue-project-status` resource with desired status
-`Done`. These resources make the required lifecycle effects planable and
-verifiable without treating them as an implicit side effect of membership.
+that Issue has an `authorizedInitialStatus`. A selected Issue already closed at
+Inspect instead requires `Done`, not an intermediate `Backlog`. When Inspect or
+Verify finds a selected Issue closed, it declares or checks a
+`closed-issue-project-status` resource with desired status `Done`. These
+resources make the required lifecycle effects planable and verifiable without
+treating them as an implicit side effect of membership.
 
 ## 4. Inspect contract
 
@@ -207,12 +209,23 @@ type PlannedOperation = {
   permittedRepairMethods?: readonly RepairMethod[];
 };
 
+type InitialStatusExpectation = {
+  resource: ResourceIdentity & { kind: "issue-initial-project-status" };
+  membershipOperationId: string;
+  statusOperationId: string;
+  expectedStatus: StandardProjectStatus;
+  authorizationRef?: string;
+};
+
 type ReconciliationPlan = {
   phase: "plan";
   target: TargetRef;
   profile: ProfileRef;
+  requestFingerprint: string;
   inspectionFingerprint: string;
+  planFingerprint: string;
   operations: readonly PlannedOperation[];
+  initialStatusExpectations: readonly InitialStatusExpectation[];
   warnings: readonly string[];
   blockedResources: readonly ResourceObservation[];
   outcome: "no-change" | "ready" | "blocked";
@@ -238,13 +251,26 @@ available method without treating native Auto-add as mandatory. If no allowed
 repair is executable under the current authority or capability, planning reports
 the membership resource as blocked rather than silently omitting it.
 
-For new membership, `ensure-issue-initial-project-status` depends on the
-corresponding membership operation and sets the Project item's status to
-`Backlog` unless an `authorizedInitialStatus` is present. For a selected closed
-Issue, `ensure-closed-issue-project-status` sets that Issue's Project item to
-`Done`. Both operation kinds have independent resource identities and
-preconditions, so a lifecycle status mismatch is visible even when membership is
-already present.
+For new membership of an open Issue, `ensure-issue-initial-project-status`
+depends on the corresponding membership operation and sets the Project item's
+status to `Backlog` unless an `authorizedInitialStatus` is present. For a
+selected closed Issue, `ensure-closed-issue-project-status` sets that Issue's
+Project item to `Done`, including when membership is newly established. Both
+operation kinds have independent resource identities and preconditions, so a
+lifecycle status mismatch is visible even when membership is already present.
+
+The plan carries exactly one typed `initialStatusExpectation` per planned new
+membership of an open Issue. It binds that membership operation, its dependent
+initial-status operation, the Issue/Project resource identity, and the expected
+`Backlog` or authorized status (including the non-secret authorization
+reference). A selected Issue whose membership was already present at Inspect
+has no initial-status expectation; its later `In Progress` or `Review` status
+is not reset to `Backlog`. A selected Issue already closed at Inspect instead
+gets the `Done` operation and no initial-status expectation. The
+`requestFingerprint` covers the normalized target, profile, selected Issue
+identities, and authorized initial-status inputs. The `planFingerprint` covers
+the immutable plan content other than itself. These bindings let later phases
+reject a mismatched request or plan without relying on session memory.
 
 ## 6. Apply contract
 
@@ -276,9 +302,10 @@ interface Applier {
 }
 ```
 
-Before its first mutation, Apply re-inspects every resource referenced by an
-operation precondition. A changed fingerprint, missing identity, new ambiguity,
-or unsupported capability produces `blocked` with no mutation to that resource.
+Before its first mutation, Apply validates the plan fingerprint and re-inspects
+every resource referenced by an operation precondition. A changed fingerprint,
+missing identity, new ambiguity, or unsupported capability produces `blocked`
+with no mutation to that resource.
 An operation is also re-checked immediately before mutation when a GitHub API
 conditional write is unavailable.
 
@@ -313,10 +340,28 @@ type VerificationReport = {
   safeDiagnostics: readonly string[];
 };
 
+type VerificationInput = {
+  request: ReconciliationRequest;
+  plan: ReconciliationPlan;
+  applyReport: ApplyReport;
+};
+
 interface Verifier {
-  verify(request: ReconciliationRequest): Promise<VerificationReport>;
+  verify(input: VerificationInput): Promise<VerificationReport>;
 }
 ```
+
+Verify accepts the same serialized plan and Apply report as the execution being
+checked, including a `no-change` plan and report. Before making a conformance
+claim, it checks the plan's target, profile, request fingerprint, and canonical
+plan fingerprint against the request, and checks the Apply report's
+`planFingerprint` and operation identities against that plan. A missing,
+incomplete, contradictory, or mismatched expectation or phase binding is
+`unverifiable`. In particular, each planned new membership of an open Issue
+must have its matching typed expectation, while an already-present membership
+must not acquire one. A `blocked`, `partial-failure`, or `failed` Apply report
+cannot yield `verified`. Apply's reported operation success is never evidence
+that the expected GitHub state exists.
 
 `verified` is permitted only when every required managed resource, including
 selected tracked-Issue Project membership, is `conforming`. `unsupported`,
@@ -324,11 +369,25 @@ selected tracked-Issue Project membership, is `conforming`. `unsupported`,
 result non-success. Verification reads fresh target state and does not reuse an
 Apply report as evidence.
 
-Fresh verification includes the event-scoped lifecycle resources in the plan or
-selected Issue state: a newly established membership must have its required
-initial Project status, and a selected closed Issue must have Project status
-`Done`. An authorized initial-status override is verified against its declared
-status; it does not make an unverified or absent status conforming.
+Fresh verification includes the plan's event-scoped initial-status expectations
+and the selected Issues' current closed state. For each planned new membership
+of an open Issue, Verify re-reads that Project item and compares its current
+Status to the typed expected value, regardless of whether Apply claimed the
+operations succeeded or an allowed Auto-add mechanism established membership.
+An authorized override is checked against the declared status and authorization
+reference; an absent or unreadable item or Status is non-conforming or
+unverifiable, never conforming.
+For a selected Issue that is closed in the fresh read, Verify requires `Done`
+even if it was open during Inspect or Apply. It does not infer that every open
+tracked Issue should be `Backlog`: membership already present before this plan
+is checked for presence, not an initial status. A later, separate reconciliation
+uses its own plan and does not carry forward an old initial-status expectation.
+If an Issue closes or receives another authorized transition between its
+initial-status write and Verify, a current-state read cannot prove that its
+earlier initial status was correct. Verify reports that event expectation as
+`unverifiable`; `Done` is still checked for a now-closed Issue. A fresh run with
+a new Inspect and Plan is the recovery path rather than silently treating the
+older expectation as a new requirement to reset an Issue's status.
 
 ## 8. GitHub adapter boundary
 
@@ -358,10 +417,11 @@ arbitrary existing Project must be classified before any Dedicated User Project
 operation; it is never repurposed merely to satisfy a plan.
 
 A conforming second run produces `InspectionReport` observations classified as
-compatible, a `no-change` plan, an Apply report with no operations, and a fresh
-`verified` report. After a partial failure, the recovery path is a new Inspect
-and Plan. It reuses compatible changes and proposes only the remaining managed
-deltas; it never assumes the prior plan still applies.
+compatible, a `no-change` plan with no initial-status expectations, an Apply
+report with no operations, and a fresh `verified` report. After a partial
+failure, the recovery path is a new Inspect and Plan. It reuses compatible
+changes and proposes only the remaining managed deltas; it never assumes the
+prior plan still applies.
 
 ## 10. Observability and test contract
 
@@ -373,9 +433,14 @@ diagnostics.
 
 | Test layer | Contract evidence |
 | --- | --- |
-| Unit | Pure planning, stable operation order, no-change outcome, lifecycle-status dependencies, and redaction. |
+| Unit | Pure planning, stable operation order, no-change outcome, event-scoped initial-status expectations and phase binding, lifecycle-status dependencies, and redaction. |
 | Adapter contract | Normalized Inspect findings, capability absence, pagination, membership and lifecycle-status writes, precondition checks, API failures, and safe diagnostics using fixtures or mocks. |
-| Live | Explicit supported GitHub.com test target exercises Inspect → Plan → Apply → Verify, a second no-op run, missing membership repair, initial `Backlog`, closed-Issue `Done`, and seeded unrelated-state preservation. |
+| Live | Explicit supported GitHub.com test target exercises Inspect → Plan → Apply → Verify, a second no-op run, missing membership repair, initial `Backlog` or authorized override, closed-Issue `Done`, and seeded unrelated-state preservation. |
+
+Verification fixtures also cover an already-present membership later in
+`In Progress` or `Review`, a missing or stale event expectation, a fresh-read
+status mismatch despite reported Apply success, and non-success for unsupported,
+unverifiable, blocked, or partially failed outcomes.
 
 No test fixture, plan, report, or log may contain a credential. Live tests are
 opt-in and use explicit target input; they do not create hidden persistent state
