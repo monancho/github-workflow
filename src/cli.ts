@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
-import { GitHubLabelPort } from "./github.js";
-import { apply, plan, verify } from "./reconcile.js";
-import { requestFor } from "./profile.js";
-import type { ApplyReport, ReconciliationPlan } from "./domain.js";
+import { GitHubCorePort } from "./core/github.js";
+import { apply, plan, verify } from "./core/reconcile.js";
+import { requestFor } from "./core/profile.js";
+import type { ApplyReport, ReconciliationPlan, TrackedIssueRef } from "./core/types.js";
 
 function argumentsMap(args: string[]): Map<string, string> {
   const options = new Map<string, string>();
@@ -31,12 +31,13 @@ async function jsonFile<T>(path: string): Promise<T> {
 async function main(): Promise<number> {
   const [command, ...args] = process.argv.slice(2);
   if (!command || !["inspect", "plan", "apply", "verify"].includes(command)) {
-    process.stderr.write("Usage: github-workflow <inspect|plan|apply|verify> --owner OWNER --repo REPO [--plan FILE] [--apply-report FILE]\n");
+    process.stderr.write("Usage: github-workflow <inspect|plan|apply|verify> --owner OWNER --repo REPO [--issues FILE] [--plan FILE] [--apply-report FILE]\n");
     return 2;
   }
   const options = argumentsMap(args);
-  const request = requestFor({ owner: required(options, "owner"), repository: required(options, "repo") });
-  const port = new GitHubLabelPort(process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN).bind(request);
+  const issues = options.has("issues") ? await jsonFile<TrackedIssueRef[]>(required(options, "issues")) : [];
+  const request = requestFor({ owner: required(options, "owner"), repository: required(options, "repo") }, issues);
+  const port = new GitHubCorePort(process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN);
   let result: unknown;
   if (command === "inspect") result = await port.inspectManagedState(request);
   if (command === "plan") result = plan(request, await port.inspectManagedState(request));
