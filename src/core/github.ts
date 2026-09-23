@@ -3,6 +3,9 @@ import { identity, labels, statuses } from "./profile.js";
 import type { AppliedOperation, GitHubPort, InspectionReport, PlannedOperation, ReconciliationRequest, ResourceObservation, StandardProjectStatus } from "./types.js";
 
 type Fetcher = typeof fetch;
+class GitHubApiFailure extends Error {
+  constructor(readonly category: "authorization" | "rate-limit" | "remote") { super(category); }
+}
 type ProjectOption = { id?: string; name: string; color?: string; description?: string };
 type ProjectField = { __typename: string; id: string; name: string; options?: ProjectOption[] };
 type Project = { id: string; title: string; number: number; closed: boolean; owner?: { login?: string }; repositories: { nodes: { nameWithOwner: string }[]; pageInfo: { hasNextPage: boolean } }; fields: { nodes: ProjectField[]; pageInfo: { hasNextPage: boolean } }; items: { nodes: { id: string }[] } };
@@ -16,23 +19,58 @@ const issueQuery = `query($owner:String!,$repo:String!,$number:Int!){repository(
 export class GitHubCorePort implements GitHubPort {
   private request?: ReconciliationRequest;
   private context?: Context;
-  constructor(private readonly token: string | undefined, private readonly fetcher: Fetcher = fetch) {}
+  constructor(private readonly token: string | undefined, private readonly fetcher: Fetcher = fetch,
+    private readonly signal?: AbortSignal) {}
 
   private headers(extra: Record<string, string> = {}): Record<string, string> {
     return { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28",
       ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}), ...extra };
   }
+  private async send(url: string, init: RequestInit, retrySafe: boolean): Promise<Response> {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (this.signal?.aborted) throw new GitHubApiFailure("remote");
+      let response: Response;
+      try {
+        response = await this.fetcher(url, { ...init, signal: this.signal });
+      } catch {
+        if (!retrySafe || attempt === 2 || this.signal?.aborted) throw new GitHubApiFailure("remote");
+        await this.retryDelay(100 * (attempt + 1));
+        continue;
+      }
+      if (response.ok) return response;
+      const remainingZero = response.headers.get("x-ratelimit-remaining") === "0";
+      const limited = response.status === 429 || response.status === 403 &&
+        (remainingZero || response.headers.has("retry-after"));
+      const transient = limited || [500, 502, 503, 504].includes(response.status);
+      const afterHeader = response.headers.get("retry-after");
+      const resetHeader = response.headers.get("x-ratelimit-reset");
+      const retryAfter = afterHeader === null ? undefined : Number(afterHeader) * 1000;
+      const resetDelay = resetHeader === null ? undefined : Number(resetHeader) * 1000 - Date.now();
+      const limitDelay = remainingZero ? resetDelay === undefined ? undefined :
+        Math.max(resetDelay, retryAfter ?? 0) : retryAfter;
+      const delay = limited ? limitDelay : transient ? Math.max(100 * (attempt + 1), retryAfter ?? 0) : undefined;
+      if (retrySafe && attempt < 2 && delay !== undefined && Number.isFinite(delay) && delay <= 2000) {
+        await this.retryDelay(Math.max(100, delay));
+        continue;
+      }
+      throw new GitHubApiFailure(limited ? "rate-limit" : [401, 403].includes(response.status) ? "authorization" : "remote");
+    }
+    throw new GitHubApiFailure("remote");
+  }
+  private async retryDelay(milliseconds: number): Promise<void> {
+    if (this.signal?.aborted) throw new GitHubApiFailure("remote");
+    await new Promise<void>(resolve => setTimeout(resolve, milliseconds));
+  }
   private async rest<T>(url: string, init: RequestInit = {}): Promise<{ value: T; response: Response }> {
-    const response = await this.fetcher(url, { ...init, headers: { ...this.headers(), ...init.headers } });
-    if (!response.ok) throw new Error("GitHub REST request failed");
+    const response = await this.send(url, { ...init, headers: { ...this.headers(), ...init.headers } },
+      !init.method || init.method.toUpperCase() === "GET");
     return { value: await response.json() as T, response };
   }
   private async graphql<T>(query: string, variables: Record<string, unknown>): Promise<T> {
-    const response = await this.fetcher("https://api.github.com/graphql", {
+    const response = await this.send("https://api.github.com/graphql", {
       method: "POST", headers: this.headers({ "Content-Type": "application/json" }),
       body: JSON.stringify({ query, variables }),
-    });
-    if (!response.ok) throw new Error("GitHub GraphQL request failed");
+    }, query.trimStart().startsWith("query"));
     const result = await response.json() as { data?: T; errors?: unknown[] };
     if (!result.data || result.errors?.length) throw new Error("GitHub GraphQL response was incomplete");
     return result.data;
@@ -184,8 +222,12 @@ export class GitHubCorePort implements GitHubPort {
         observedAt: new Date().toISOString(), stateFingerprint: fingerprint(resources),
         capabilities: [{ capability: "project-item-add", status: this.token ? "available" : "unknown", safeDiagnostics: [] }],
         resources, unrelatedSummary, outcome: "inspected", safeDiagnostics: [] };
-    } catch {
-      return this.unavailable(request, "unverifiable", "GitHub managed state could not be fully inspected");
+    } catch (error) {
+      const diagnostic = error instanceof GitHubApiFailure ?
+        error.category === "authorization" ? "GitHub authorization is unavailable for required inspection" :
+        error.category === "rate-limit" ? "GitHub rate limit prevented complete inspection" :
+        "GitHub API did not provide complete managed state" : "GitHub managed state could not be fully inspected";
+      return this.unavailable(request, "unverifiable", diagnostic);
     }
   }
 

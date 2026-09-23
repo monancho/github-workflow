@@ -37,14 +37,17 @@ async function main(): Promise<number> {
   const options = argumentsMap(args);
   const issues = options.has("issues") ? await jsonFile<TrackedIssueRef[]>(required(options, "issues")) : [];
   const request = requestFor({ owner: required(options, "owner"), repository: required(options, "repo") }, issues);
-  const port = new GitHubCorePort(process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN);
+  const cancellation = new AbortController();
+  process.once("SIGINT", () => cancellation.abort());
+  process.once("SIGTERM", () => cancellation.abort());
+  const port = new GitHubCorePort(process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN, fetch, cancellation.signal);
   let result: unknown;
   if (command === "inspect") result = await port.inspectManagedState(request);
   if (command === "plan") result = plan(request, await port.inspectManagedState(request));
-  if (command === "apply") result = await apply(port, request, await jsonFile<ReconciliationPlan>(required(options, "plan")));
+  if (command === "apply") result = await apply(port, request, await jsonFile<ReconciliationPlan>(required(options, "plan")), cancellation.signal);
   if (command === "verify") result = await verify(port, request,
     await jsonFile<ReconciliationPlan>(required(options, "plan")),
-    await jsonFile<ApplyReport>(required(options, "apply-report")));
+    await jsonFile<ApplyReport>(required(options, "apply-report")), cancellation.signal);
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   const outcome = (result as { outcome: string }).outcome;
   return ["inspected", "ready", "no-change", "applied", "verified"].includes(outcome) ? 0 : 1;

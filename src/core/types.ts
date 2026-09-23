@@ -50,6 +50,8 @@ export type InitialStatusExpectation = {
 export type ReconciliationPlan = {
   phase: "plan";
   resourceScope: "core-profile";
+  planSchemaVersion: 1;
+  requestIdentity: string;
   target: TargetRef;
   profile: ProfileRef;
   requestFingerprint: string;
@@ -61,14 +63,14 @@ export type ReconciliationPlan = {
   blockedResources: ResourceObservation[];
   outcome: "no-change" | "ready" | "blocked";
 };
-export type AppliedOperation = { operation: PlannedOperation; outcome: "applied" | "already-conforming" | "blocked" | "failed" | "not-attempted"; safeDiagnostics: string[] };
+export type AppliedOperation = { operation: PlannedOperation; outcome: "applied" | "already-conforming" | "blocked" | "failed" | "indeterminate" | "not-attempted"; safeDiagnostics: string[] };
 export type ApplyReport = {
   phase: "apply";
   resourceScope: "core-profile";
   planFingerprint: string;
   preflightInspectionFingerprint: string;
   operations: AppliedOperation[];
-  outcome: "applied" | "no-change" | "blocked" | "partial-failure" | "failed";
+  outcome: "applied" | "no-change" | "blocked" | "partial-failure" | "failed" | "interrupted";
   safeDiagnostics: string[];
 };
 export type ResourceVerification = { resource: ResourceIdentity; status: "conforming" | "non-conforming" | "unsupported" | "unverifiable"; safeDiagnostics: string[] };
