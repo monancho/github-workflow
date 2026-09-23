@@ -30,19 +30,33 @@ No alpha, beta, or release-candidate tag is required by default.
    fixture Project lists still omitted active items during a GitHub Projects
    indexing incident. That checkpoint is partial release evidence.
 2. Complete [#37](https://github.com/monancho/github-workflow/issues/37)
-   with accurate public documentation, then the independent
+   with accurate pre-release documentation, then the independent
    [SC-001–SC-012 audit in #38](https://github.com/monancho/github-workflow/issues/38).
    Resolve any failed criterion or record an explicitly authorized exception;
    do not infer readiness from a merged PR or a `Done` Project Status alone.
-3. For [#39](https://github.com/monancho/github-workflow/issues/39), inspect
+3. As part of [#39](https://github.com/monancho/github-workflow/issues/39),
+   prepare and independently review the final release-facing documentation
+   before choosing a candidate commit or creating a tag. In particular, replace
+   the README's pre-release status, the distribution guide's "no Release yet"
+   and availability/install wording, and `SECURITY.md`'s "no public release"
+   supported-version wording. Confirm all three files, which are packaged in
+   the npm tarball, will be accurate when `v0.1.0` is public.
+   Use wording that remains truthful between integration and publication; do
+   not merge a claim that a Release already exists while it does not. Review and
+   integrate this documentation under the normal PR Quality Gate and Merge
+   Authority rules. This guide's current pre-release statements remain correct
+   until that release-scoped update.
+4. After the final documentation is on `main`, inspect
    the release milestone, open Issues/PRs, blockers and decisions, current `main`
    commit SHA, required checks, and independent Review/QA evidence. Confirm the
    release candidate matches the [requirements](REQUIREMENTS.md),
    [workflow specification](WORKFLOW_SPEC.md),
    [distribution guide](DISTRIBUTION.md), and [security policy](../SECURITY.md).
-   Record the exact candidate commit SHA, evidence links, remaining limitations,
-   and proposed notes in #39 for the human release decision.
-4. From a clean checkout of that exact commit, run `npm ci`, `npm test`, and
+   Re-evaluate the applicable #38 success-criterion audit and checks against
+   this final SHA, recording any addendum and the exact candidate commit SHA,
+   evidence links, remaining limitations, and proposed notes in #39 for the
+   human release decision.
+5. From a clean checkout of that exact commit, run `npm ci`, `npm test`, and
    `npm pack --dry-run --json`. Check the file list against `package.json`:
    compiled CLI/runtime files, TypeScript declarations, README,
    `docs/DISTRIBUTION.md`, `SECURITY.md`, `LICENSE`, and package metadata;
@@ -54,7 +68,8 @@ No alpha, beta, or release-candidate tag is required by default.
 
 1. Confirm that the approval names the reviewed candidate commit, `v0.1.0`
    tag, and GitHub Release publication. If the candidate SHA changes, repeat
-   the applicable review, checks, audit, and decision against the new SHA.
+   applicable independent Review/QA, checks, the #38 readiness audit, and
+   the human release decision against the new SHA before tagging or publishing.
 2. Create and push the `v0.1.0` tag at the approved `main` commit. Verify that
    the remote tag resolves to that commit. Do not move or reuse a published
    version tag as a work-state marker.
