@@ -41,9 +41,22 @@ type ProfileRef = {
   version: string;
 };
 
+type StandardProjectStatus =
+  | "Backlog"
+  | "Ready"
+  | "In Progress"
+  | "Review"
+  | "Done";
+
+type AuthorizedInitialStatus = {
+  status: StandardProjectStatus;
+  authorizationRef: string;
+};
+
 type TrackedIssueRef = {
   number: number;
   nodeId?: string;
+  authorizedInitialStatus?: AuthorizedInitialStatus;
 };
 
 type ReconciliationRequest = {
@@ -58,6 +71,11 @@ of which repository Issues are tracked. An empty selection is valid for Core
 Profile inspection, but cannot establish membership for an Issue that the
 operator declares as participating in lifecycle management.
 
+`authorizedInitialStatus` is optional, non-secret evidence that an authorized
+workflow action assigns an applicable status other than the default `Backlog`.
+It is considered only when the current plan establishes Project membership. It
+does not override the required `Done` status for a closed Issue.
+
 Each managed resource has a stable identity and a resource-specific desired
 state. The initial resource kinds are:
 
@@ -67,7 +85,9 @@ type ResourceKind =
   | "dedicated-project"
   | "project-statuses"
   | "managed-label"
-  | "issue-project-membership";
+  | "issue-project-membership"
+  | "issue-initial-project-status"
+  | "closed-issue-project-status";
 
 type ResourceIdentity = {
   kind: ResourceKind;
@@ -122,6 +142,14 @@ is recorded as a capability finding and may be preferred when available, but is
 not the resource's sole satisfying mechanism. A missing membership remains a
 managed delta until an allowed repair is verified.
 
+Lifecycle status effects are explicit event-scoped resources. When a plan adds
+an Issue to the Dedicated User Project, it also declares an
+`issue-initial-project-status` resource with desired status `Backlog`, unless
+that Issue has an `authorizedInitialStatus`. When Inspect finds a selected Issue
+closed, it declares a `closed-issue-project-status` resource with desired status
+`Done`. These resources make the required lifecycle effects planable and
+verifiable without treating them as an implicit side effect of membership.
+
 ## 4. Inspect contract
 
 ```ts
@@ -170,7 +198,9 @@ type PlannedOperation = {
     | "ensure-dedicated-project"
     | "ensure-project-statuses"
     | "ensure-managed-label"
-    | "ensure-issue-project-membership";
+    | "ensure-issue-project-membership"
+    | "ensure-issue-initial-project-status"
+    | "ensure-closed-issue-project-status";
   preconditions: readonly OperationPrecondition[];
   dependsOn: readonly string[];
   expectedEffect: string;
@@ -207,6 +237,14 @@ methods applicable to its inspection. The production implementation selects an
 available method without treating native Auto-add as mandatory. If no allowed
 repair is executable under the current authority or capability, planning reports
 the membership resource as blocked rather than silently omitting it.
+
+For new membership, `ensure-issue-initial-project-status` depends on the
+corresponding membership operation and sets the Project item's status to
+`Backlog` unless an `authorizedInitialStatus` is present. For a selected closed
+Issue, `ensure-closed-issue-project-status` sets that Issue's Project item to
+`Done`. Both operation kinds have independent resource identities and
+preconditions, so a lifecycle status mismatch is visible even when membership is
+already present.
 
 ## 6. Apply contract
 
@@ -286,6 +324,12 @@ selected tracked-Issue Project membership, is `conforming`. `unsupported`,
 result non-success. Verification reads fresh target state and does not reuse an
 Apply report as evidence.
 
+Fresh verification includes the event-scoped lifecycle resources in the plan or
+selected Issue state: a newly established membership must have its required
+initial Project status, and a selected closed Issue must have Project status
+`Done`. An authorized initial-status override is verified against its declared
+status; it does not make an unverified or absent status conforming.
+
 ## 8. GitHub adapter boundary
 
 The reconciliation domain depends on a port that can read normalized managed
@@ -329,9 +373,9 @@ diagnostics.
 
 | Test layer | Contract evidence |
 | --- | --- |
-| Unit | Pure planning, stable operation order, no-change outcome, dependency handling, and redaction. |
-| Adapter contract | Normalized Inspect findings, capability absence, pagination, precondition checks, API failures, and safe diagnostics using fixtures or mocks. |
-| Live | Explicit supported GitHub.com test target exercises Inspect → Plan → Apply → Verify, a second no-op run, missing membership repair, and seeded unrelated-state preservation. |
+| Unit | Pure planning, stable operation order, no-change outcome, lifecycle-status dependencies, and redaction. |
+| Adapter contract | Normalized Inspect findings, capability absence, pagination, membership and lifecycle-status writes, precondition checks, API failures, and safe diagnostics using fixtures or mocks. |
+| Live | Explicit supported GitHub.com test target exercises Inspect → Plan → Apply → Verify, a second no-op run, missing membership repair, initial `Backlog`, closed-Issue `Done`, and seeded unrelated-state preservation. |
 
 No test fixture, plan, report, or log may contain a credential. Live tests are
 opt-in and use explicit target input; they do not create hidden persistent state
@@ -346,6 +390,7 @@ or broaden the supported environment.
 | Preconditions, conflicts, and recovery | FR-023, FR-026–FR-027, NFR-004 |
 | Fresh verification and explicit non-success outcomes | FR-022, FR-027, NFR-004 |
 | Project membership and optional Auto-add repair | FR-030–FR-033, FR-039–FR-040 |
+| Initial and closed-Issue lifecycle status effects | FR-031–FR-032 |
 | Secret-safe, least-privilege adapter boundary | NFR-005–NFR-006 |
 | Agent-neutral and repository-independent state | FR-016, NFR-002, RI-001–RI-006 |
 | End-to-end verification evidence | SC-001–SC-003, SC-009 |
