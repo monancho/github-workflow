@@ -8,8 +8,9 @@ repository. Product behavior is defined by
 not redefine that contract.
 
 A tracked GitHub Issue is the execution contract for work that warrants
-independent tracking. Before acting, an executor reads the Issue and the current
-canonical repository documentation. The Issue must make the objective, scope,
+independent tracking. Before acting, an executor reads the Issue, its latest
+relevant comments, and the current canonical repository documentation. The Issue
+must make the objective, scope,
 acceptance or completion conditions, constraints, and authority boundary clear
 enough to execute.
 
@@ -36,13 +37,52 @@ resources. On completion, promote durable information to the appropriate
 canonical document, specification, ADR, or Pull Request evidence; transient
 working context may be removed.
 
+## Repository work intake and queue
+
+For a repository-level request, inspect durable GitHub state before selecting an
+Issue: open and relevant recently closed Issues with Dedicated User Project
+Status/membership; native Sub-Issues and dependencies; material comments,
+linked open PRs, unresolved review and available checks, blockers and decisions,
+milestone scope, untriaged work, and
+parent coordination. Distinguish Ready, active, Review/rework, blocked,
+needs-decision, Discovery/future, and terminal work. Repair missing required
+Project membership under the existing Core Profile rules; do not guess a Status.
+
+Select only work that is authorized, has no unsatisfied real prerequisite or
+unresolved blocking decision, and fits current sequencing and release scope.
+Prefer continuing applicable active or review work before starting unrelated
+Ready work. Re-scan after each merge, decision, or terminal outcome. For this
+repository's current dogfooding sequence, the recorded direction is #22 → #21 →
+#14/PR #18 → #15 → #12 in the latest relevant
+[#21 comment](https://github.com/monancho/github-workflow/issues/21#issuecomment-5787816024).
+Verify the actual queue after each outcome; this sequence is not a general Core
+Profile setting.
+
+Treat an in-scope finding within the current Issue's authorization envelope.
+Create a normal tracked Issue for independent work already authorized to execute;
+use a Sub-Issue when it decomposes parent work. When value, scope, or placement
+is materially uncertain, create Discovery work in Backlog to decide whether to
+Adopt, Split, Defer, or Reject it. Do not create GitHub work for a detail with no
+independent tracking value. Issue creation records work and does not grant
+execution authority. A finished Discovery may close as `Completed` even when
+its decision is Reject; cancelling the decision work itself uses `Not planned`.
+Optional `kind/discovery` is classification metadata only, not managed Core
+Profile state or a substitute for Project Status, milestone, dependency, or
+condition labels.
+
+Read relevant comments on every start or resumption. Record material plan
+changes, decisions, blocker resolutions, and review findings in GitHub;
+notification read/unread state is not acknowledgement. Per-comment receipts and
+separate actor identities are not v0.1.0 requirements.
+
 ## Repository-change workflow
 
 For a repository change, the default executor lifecycle is:
 
-1. Inspect the Issue, repository state, and applicable canonical documentation.
-2. Move the Issue to `In Progress` in the Dedicated User Project when that
-   Project is available.
+1. Scan repository work, select an authorized actionable Issue, and inspect its
+   latest relevant comments and applicable canonical documentation.
+2. Confirm required Dedicated User Project membership, repairing it if missing,
+   then move the Issue to `In Progress`.
 3. Create or use a short-lived branch for the Issue.
 4. Perform only in-scope work and update affected canonical documentation in the
    same change.
@@ -50,7 +90,7 @@ For a repository change, the default executor lifecycle is:
 6. Commit meaningful changes and push the branch.
 7. Create, or update, a Pull Request linked to the authorizing Issue.
 8. Record concise verification evidence in the Pull Request.
-9. Move the Issue to `Review` when the Dedicated User Project is available.
+9. Move the Issue to `Review` in the Dedicated User Project.
 10. Stop without merging unless a later policy explicitly authorizes autonomous
     merge.
 

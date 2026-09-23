@@ -18,6 +18,7 @@ language, runtime, CLI, storage model, or backend architecture.
 | Project membership | Representation of a tracked Issue as an item in its Dedicated User Project. |
 | Project Status | The lifecycle phase held in the Dedicated User Project. |
 | Pull Request | A linked repository-change and integration artifact, not the canonical work-state record. |
+| Discovery work | Tracked decision work about uncertain value, scope, or placement before independent implementation is approved; a work kind, not a Project Status. |
 | Authorization envelope | Approved scope, acceptance conditions, and constraints for execution. |
 | Managed state | Native GitHub state the Core Profile reconciles. |
 | Unrelated configuration | Existing target state outside the managed-state boundary. |
@@ -39,6 +40,26 @@ semantics, and a Sub-Issue is never a one-to-one assignment to an agent.
 
 Use an Issue Dependency only when one tracked work item genuinely blocks another.
 Do not use it for relatedness, ordinary sequencing, or artificial serialization.
+
+### Repository work inspection
+
+Before selecting work, inspect the repository's durable GitHub state, not only a
+named Issue. Reconstruct the queue from open Issues, relevant recently closed
+Issues, and their Dedicated User Project membership and Status; native Sub-Issues
+and real Issue Dependencies; latest comments that materially affect plans,
+authorization, decisions, blockers, or review; open PRs and their authorizing
+Issues; unresolved review feedback and
+available checks; condition labels; milestone/release scope; newly discovered or
+untriaged work; and parent coordination state where applicable. A PR represents
+change and integration, not a second Project work item.
+
+Classify the resulting work as actionable/Ready, active/In Progress,
+Review/rework, blocked by a real prerequisite or external condition, awaiting a
+human or other authority decision, Discovery or deferred future work, or
+terminal/no-action. These categories describe what needs attention; Project
+Status remains the canonical lifecycle phase. A missing required Project item is
+a membership defect to repair under FR-040, not evidence that an Issue is Ready,
+Done, or outside the queue. An untriaged Issue is assessed before execution.
 
 ## 3. Lifecycle and conditions
 
@@ -74,21 +95,68 @@ If a PR merge closes its linked Issue, the Issue's acceptance conditions and
 required verification must already be satisfied. A PR is not duplicated as a
 canonical Project work item when its tracked Issue exists.
 
-## 5. Authority and discovery
+## 5. Authority, intake, and queue selection
 
 Within the authorization envelope, an Executor may make implementation decisions.
 Separate authority is required for material scope changes, acceptance-condition
 changes, public-contract changes, governance or security boundary changes,
 starting independent new work, and releases.
 
-| Discovery | Required handling |
+When new information appears, apply the following intake decision in order:
+
+| Finding | Required handling |
 | --- | --- |
-| Small in-scope detail | Decide and implement within the authorization envelope. |
-| Independently trackable work | Create a native Sub-Issue when decomposition is appropriate. |
+| Detail of current authorized work | Decide and implement within the current authorization envelope. |
+| Independent work already authorized to execute | Create a normal tracked Issue, using a native Sub-Issue when decomposition is appropriate, and place it in Backlog or Ready according to its actual readiness. |
+| Independent work with material uncertainty about value, scope, or placement | Create Discovery work in Backlog to resolve that uncertainty before authorizing implementation. |
+| No independent tracking value | Do not create GitHub work. |
+
+Creating an Issue or Sub-Issue records work but grants no execution authority by
+itself. If independent implementation is not already authorized, obtain the
+separate authority required by FR-011 before starting it. Classification does
+not override the Issue's authorization envelope or the Dedicated User Project's
+lifecycle state.
+
+Discovery is a work kind, not a lifecycle phase. It may pass through Backlog,
+Ready, In Progress, Review, and Done like other tracked work. Record its decision
+in the Issue: **Adopt** creates an executable follow-up Issue after approval;
+**Split** creates independently tracked follow-ups; **Defer** preserves an
+accepted future item without starting it now; **Reject** records that no
+implementation will proceed. A decision-complete Discovery closes as
+`Completed`, including a Reject outcome, because its decision work succeeded.
+Use `Not planned` when the Discovery work itself was cancelled or intentionally
+left unfinished. Follow-up Issue creation alone does not authorize execution.
+
+On the personal-account/GitHub Free baseline, `kind/discovery` MAY be used as a
+small compatibility label to make Discovery work easier to find. It is optional
+classification metadata, outside the managed Core Profile of FR-028. It does
+not encode Project Status, milestone/release scope, hierarchy, dependency, or a
+condition such as `needs-decision` or `blocked`. Organization-only Issue Types
+are not required.
+
+Other findings retain their native handling:
+
+| Finding | Required handling |
+| --- | --- |
 | Real blocking tracked work | Create a native Issue Dependency. |
 | External blocker | Apply `blocked` and record the blocker in GitHub. |
 | Decision requirement | Apply `needs-decision` and record the decision needed. |
 | Security-sensitive finding | Stop affected work and use the repository's private reporting path; do not expose sensitive details publicly. |
+
+Select the next work item only after confirming its execution authority, real
+prerequisites, absence of an unresolved blocking decision, and compatibility
+with current sequencing and milestone/release scope. Prefer finishing applicable
+In Progress or Review/rework work before starting unrelated Ready work, unless
+an explicit policy or blocker explains another choice. Backlog or Discovery
+classification does not make independent implementation actionable. Re-scan
+GitHub after a merge, decision, or other terminal outcome because the queue may
+have changed.
+
+Read relevant comments when starting or resuming work, and record material plan
+changes, decisions, blocker resolutions, and review findings durably in GitHub.
+Notification read/unread state is not proof of acknowledgement. Per-comment
+read receipts, separate human-versus-agent provenance under a shared identity,
+and dedicated bot identities are deferred from v0.1.0; they do not block work.
 
 ## 6. Completion paths
 
@@ -171,7 +239,7 @@ Organization-owned repositories, private repositories, enterprise environments,
 cross-owner Projects, and shared multi-repository Projects are not supported
 claims.
 
-This specification materially covers FR-001–FR-040, NFR-001–NFR-009,
+This specification materially covers FR-001–FR-044, NFR-001–NFR-009,
 CON-001–CON-005, PC-001–PC-003, RI-001–RI-006, and
 SUP-001–SUP-003. Requirement changes follow the traceability rules in
 `REQUIREMENTS.md`; examples and implementation possibilities are not additional
