@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
-import { CLI_VERSION, CliInputError, exitCodeFor, failure, HELP, parseCliArgs, renderText } from "./cli/contract.js";
+import { CLI_VERSION, CliInputError, exitCodeFor, failure, HELP, parseCliArgs, renderText, supportedNodeVersion } from "./cli/contract.js";
 import { GitHubCorePort } from "./core/github.js";
 import { apply, plan, verify } from "./core/reconcile.js";
 import { requestFor } from "./core/profile.js";
@@ -28,6 +28,11 @@ async function main(): Promise<number> {
     if (parsed.action === "help") { process.stdout.write(HELP); return 0; }
     if (parsed.action === "version") { process.stdout.write(`${CLI_VERSION}\n`); return 0; }
     const { command, format, owner, repository, issuesFile, planFile, applyReportFile } = parsed.invocation;
+    if (!supportedNodeVersion(process.versions.node)) {
+      const result = failure("unsupported", "Node.js 22 or 24 LTS is required for v0.1.0");
+      process.stdout.write(format === "text" ? renderText(result) : `${JSON.stringify(result, null, 2)}\n`);
+      return exitCodeFor(result.outcome);
+    }
     const issues = issuesFile ? await jsonFile<TrackedIssueRef[]>(issuesFile) : [];
     let request;
     try { request = requestFor({ owner, repository }, issues); }
