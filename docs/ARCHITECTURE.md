@@ -204,7 +204,7 @@ requirements baseline.
 | Agent-neutral, repository-independent extension path | FR-016, NFR-002, RI-001–RI-006 |
 | Supported-target live verification | SUP-001–SUP-003, SC-001–SC-003 |
 
-The precise typed interfaces and command inputs belong to the reconciliation
-contract that follows this architecture. Implementation work must preserve this
-document's boundaries and use the current requirements baseline as the source of
-public behavior.
+The precise typed interfaces and command inputs are defined in
+[`../specs/RECONCILIATION_CONTRACT.md`](../specs/RECONCILIATION_CONTRACT.md).
+Implementation work must preserve this document's boundaries and use the current
+requirements baseline as the source of public behavior.
