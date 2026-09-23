@@ -48,7 +48,7 @@ export class GitHubCorePort implements GitHubPort {
       const resetDelay = resetHeader === null ? undefined : Number(resetHeader) * 1000 - Date.now();
       const limitDelay = remainingZero ? resetDelay === undefined ? undefined :
         Math.max(resetDelay, retryAfter ?? 0) : retryAfter;
-      const delay = limited ? limitDelay : transient ? 100 * (attempt + 1) : undefined;
+      const delay = limited ? limitDelay : transient ? Math.max(100 * (attempt + 1), retryAfter ?? 0) : undefined;
       if (retrySafe && attempt < 2 && delay !== undefined && Number.isFinite(delay) && delay <= 2000) {
         await this.retryDelay(Math.max(100, delay));
         continue;

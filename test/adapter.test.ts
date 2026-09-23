@@ -268,6 +268,17 @@ test("primary rate limit does not retry before reset", async () => {
   assert.equal(attempts, 1);
 });
 
+test("transient Retry-After beyond the bounded window does not retry early", async () => {
+  const request = requestFor({ owner: "example", repository: "sample" });
+  let attempts = 0;
+  const port = new GitHubCorePort("dummy-secret", async () => {
+    attempts++;
+    return Response.json({ message: "busy" }, { status: 503, headers: { "retry-after": "30" } });
+  });
+  assert.equal((await port.inspectManagedState(request)).outcome, "unverifiable");
+  assert.equal(attempts, 1);
+});
+
 test("a thrown read-network error retries, but mid-Apply authorization loss stops later writes", async () => {
   const fixture = new GitHubFixture();
   const request = requestFor({ owner: "example", repository: "sample" });
