@@ -16,8 +16,10 @@ enough to execute.
 
 ## Planning, records, and working context
 
-Executors form a session-local implementation plan appropriate to the work. Do
-not require or create standalone GOAL, PLAN, PROGRESS, EXECUTION, or EVIDENCE
+Executors form an implementation plan appropriate to the work. For supervised
+repository changes, the Main Supervisor records a concise Implementation Plan
+with the Issue before delegation; later material changes are recorded there too.
+Do not require or create standalone GOAL, PLAN, PROGRESS, EXECUTION, or EVIDENCE
 files for every Issue. The Issue and Sub-Issues hold tracked work and
 decomposition; the Dedicated User Project holds live work state; and linked Pull
 Requests, review, and Actions hold change and verification history.
@@ -79,22 +81,43 @@ separate actor identities are not v0.1.0 requirements.
 
 ## Repository-change workflow
 
-For a repository change, the default executor lifecycle is:
+For a repository change, the default supervised lifecycle is:
 
 1. Scan repository work, select an authorized actionable Issue, and inspect its
-   latest relevant comments and applicable canonical documentation.
+   latest relevant comments, applicable canonical documentation, Project state,
+   blockers and dependencies, and any linked PR, review, and checks.
 2. Confirm required Dedicated User Project membership, repairing it if missing,
-   then move the Issue to `In Progress`.
-3. Create or use a short-lived branch for the Issue.
-4. Perform only in-scope work and update affected canonical documentation in the
-   same change.
-5. Run verification proportional to the change and its risk.
-6. Commit meaningful changes and push the branch.
-7. Create, or update, a Pull Request linked to the authorizing Issue.
-8. Record concise verification evidence in the Pull Request.
-9. Move the Issue to `Review` in the Dedicated User Project.
-10. Stop without merging unless a later policy explicitly authorizes autonomous
-    merge.
+   then move the Issue to `In Progress`. Record the approved Implementation Plan
+   and bounded delegation context with the Issue.
+3. Create or reconstruct one short-lived isolated Child worktree and branch for
+   the active Issue. The Child Executor reads its authorizing Issue, material
+   comments, plan, canonical docs, and existing PR/review feedback, then performs
+   only in-scope repository-file work.
+4. The Child verifies proportionally to risk, commits and pushes, and opens or
+   updates the linked review-ready PR with concise evidence. The Child does not
+   merge.
+5. Move the Issue to `Review`. Main independently reviews the current PR revision
+   and performs or coordinates acceptance-oriented QA. Record blocking findings
+   in GitHub and return normal in-scope corrections to the same Child and PR.
+6. After the Quality Gate passes, Main checks Merge Authority separately. Merge
+   only when the autonomous envelope below permits it or a specific human
+   integration decision authorizes it. Otherwise record the decision needed and
+   leave the PR for human handoff.
+7. After merge or terminal non-completion, reconcile the Issue, Project, and
+   parent; confirm durable continuation; clean up the finished Child worktree and
+   stale local branch as appropriate. Re-scan GitHub before selecting the next
+   authorized actionable Issue.
+
+Main remains Supervisor and Reviewer: it chooses work from a repository-wide
+scan, records direction, delegates bounded execution, checks the result, decides
+the integration route, and reconciles outcomes. It does not modify Child-branch
+repository files while reviewing except for an explicitly documented exception.
+The default loop is serial; finish or intentionally suspend the current active
+or review work before making a Child worktree for unrelated work. Parallel Child
+worktrees need an explicit reason with no shared-state or review conflict.
+GitHub, not accumulated worktrees, remains the durable work queue. Worktree
+topology is this repository's execution technique, not a public Core Profile
+requirement or a Sub-Issue relationship.
 
 “Ready for a PR” is not executor completion when a repository change is
 required. The linked, review-ready Pull Request must exist.
@@ -103,6 +126,27 @@ required. The linked, review-ready Pull Request must exist.
 pushed, and handed off through a review-ready Pull Request. **Work Done** means
 the appropriate integration or review authority has accepted the result and the
 tracked Issue has reached its terminal outcome.
+
+The Child handoff must be reconstructable from the Issue body and material
+comments, PR body and diff, review findings and responses, canonical docs, and
+committed/pushed branch. Uncommitted or unpushed work is not durable handoff
+state. Before removing a Child worktree or changing sessions, record any missing
+material context in GitHub. No former session, agent transcript, model choice,
+or permanent Child worktree is needed to continue.
+
+## Independent Review and QA
+
+Main reviews beyond Child self-verification: Issue scope and acceptance,
+requirement traceability, architecture/spec semantics, cross-document and
+cross-phase information flow, edge and adversarial cases, unrelated changes,
+and verification evidence as applicable. Specification work needs semantic
+contract review, not only formatting or requirement-ID checks.
+
+QA tests the authorizing acceptance conditions at a depth proportionate to risk.
+Consider success, no-op, failure, recovery, idempotency, and live integration
+behavior where applicable. For a documented low-risk change, the same independent
+Reviewer may perform QA. Child self-verification alone never satisfies the
+independent Quality Gate. Record relevant findings and evidence in the PR.
 
 ## Pull Request feedback
 
@@ -121,8 +165,45 @@ Pull Request
 
 Do not open a replacement Pull Request merely because review feedback requires a
 change. If feedback requires a material scope change, acceptance-condition
-change, public-contract change, or security or governance decision, surface it
-with `needs-decision` rather than silently implementing it.
+change, public-contract change, or security or governance decision outside the
+approved authorization envelope, surface it with `needs-decision` rather than
+silently implementing it.
+
+## Merge Authority and follow-through
+
+Ask three separate questions: **Execution Authority** permits implementation
+within the approved envelope; **Quality Gate** means independent Review and
+risk-proportionate QA passed on the current PR revision; **Merge Authority**
+permits integration. Approval to implement and a passing Quality Gate do not
+themselves authorize merge.
+
+Main may merge autonomously only when all of these hold:
+
+- the work and result remain within the approved scope and acceptance conditions;
+- independent Review and applicable QA passed on the current PR revision;
+- required checks passed and verification evidence is sufficient;
+- blocking review findings, disagreements, and decisions are resolved;
+- the integrating actor has merge authority and no separate human integration
+  authority is required; and
+- none of the human-decision categories below applies.
+
+Human integration judgment is required for material scope or acceptance changes,
+public-contract or requirements changes, significant architecture changes needing
+separate authority, support-boundary changes, security or governance boundary
+changes, destructive changes to unrelated state, and releases. Unresolved
+Reviewer/QA disagreement, ambiguous or insufficient verification, and explicit
+`needs-decision` also stop autonomous merge. Record the decision needed in the
+Issue or PR. A specific human approval may authorize Main to merge that PR after
+its Quality Gate passes; it does not authorize autonomous merge for later PRs.
+If no checks are configured, use applicable manual evidence; do not claim absent
+evidence is a passed check.
+
+After a child work item reaches a terminal outcome, inspect remaining child
+Issues, blockers, and parent acceptance conditions. A Child PR handoff or merge
+does not automatically complete the parent. Reconcile the parent's Issue and
+Project state without duplicating each child's canonical record or treating a
+Sub-Issue as new execution authority. Then re-scan the repository queue before
+creating the next Child worktree.
 
 ## GitHub-native decomposition and blockers
 

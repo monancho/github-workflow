@@ -20,12 +20,20 @@ language, runtime, CLI, storage model, or backend architecture.
 | Pull Request | A linked repository-change and integration artifact, not the canonical work-state record. |
 | Discovery work | Tracked decision work about uncertain value, scope, or placement before independent implementation is approved; a work kind, not a Project Status. |
 | Authorization envelope | Approved scope, acceptance conditions, and constraints for execution. |
+| Implementation Plan | Concise durable execution direction recorded with the tracked Issue before delegation. |
+| Quality Gate | Independent Review and acceptance-oriented QA required before integration. |
+| Merge Authority | Authority to integrate a result after its Quality Gate, separately from execution authority. |
 | Managed state | Native GitHub state the Core Profile reconciles. |
 | Unrelated configuration | Existing target state outside the managed-state boundary. |
 | Close reason | `Completed` for successful completion or `Not planned` for intentional non-completion. |
 
-Maintainer, Executor, Reviewer, and Release Authority are logical roles. Their
-authority does not depend on whether the actor is human or an AI agent.
+Maintainer, Supervisor, Executor, Reviewer, QA, Merge Authority, and Release
+Authority are logical roles. The Supervisor coordinates the queue and handoffs;
+the Executor performs bounded work; the Reviewer assesses the result independently
+of Executor self-check; QA checks acceptance behavior; Merge Authority decides
+integration. One person may hold multiple roles, but performing Executor
+self-verification does not itself count as independent Review or QA. Authority
+does not depend on whether an actor is human or an AI agent.
 
 ## 2. Work identification and decomposition
 
@@ -163,10 +171,86 @@ and dedicated bot identities are deferred from v0.1.0; they do not block work.
 
 ## 6. Completion paths
 
-Repository-change work is complete for the Executor after inspection, in-scope
-implementation, verification, commit, push, and a linked review-ready PR. Review
-feedback returns the same PR to the Executor for in-scope correction and
-re-verification; it does not require a replacement PR.
+### 6.1 Supervised repository-change cycle
+
+After the repository-wide inspection in Section 2 and queue selection in Section
+5, the Supervisor reads the chosen Issue, latest material comments, applicable
+canonical documents, Project state, dependencies and blockers, and any linked PR,
+unresolved review, and checks. The Supervisor records a concise Implementation
+Plan with the Issue before delegation. That plan identifies the approved direction,
+constraints, acceptance and verification approach, and authority boundary; it
+does not create new execution authority or a second task-state store.
+
+The Executor receives the authorizing Issue, material comments, approved plan,
+affected canonical contracts, existing PR/review feedback on resumption, and the
+authority boundary. An isolated worktree and child executor are possible
+execution techniques, not required Core Workflow Contract topology. A human or
+a different agent product may implement the same logical handoff. The Executor
+performs only in-scope work, verifies it, commits and pushes the branch, then
+opens or updates the linked review-ready PR with concise evidence. This is
+Executor completion, not Work Done; the Executor does not merge its handoff.
+
+The Supervisor arranges Review independent of Executor self-verification. Review
+checks the Issue's scope and completion conditions, requirement traceability,
+architecture and specification semantics, consistency across documents and
+phases, information flow at interfaces, edge and adversarial cases, unrelated
+changes, and the evidence appropriate to the change. A specification change
+needs semantic contract review, not only formatting and requirement-ID checks.
+
+QA checks that the resulting artifact satisfies the authorizing acceptance
+conditions. Its depth follows the risk, including applicable success, no-op,
+failure, recovery, idempotency, and live or integration behavior. Reviewer and QA
+responsibilities may be combined for a documented low-risk change; the
+Executor's self-check alone never closes the independent Quality Gate. Record
+blocking findings in GitHub. Normal in-scope corrections return to the same
+Executor on the same PR and branch for re-verification and re-review. A decision
+outside the authorization envelope is escalated instead of silently included.
+
+The continuation record is the Issue body and material comments, PR body and
+diff, review findings and responses, canonical documents, and committed/pushed
+branch. Uncommitted or unpushed work is not a durable handoff. Before execution
+moves to another session or an isolated worktree is removed, missing material
+context must be recorded durably. The workflow must remain resumable without
+the former session or worktree; it does not require agent transcripts, model
+metadata, or a custom state store.
+
+### 6.2 Merge authority and reconciliation
+
+Decide three questions separately: **Execution Authority** asks whether the work
+could be performed; **Quality Gate** asks whether required Review and QA passed
+on the current PR revision; **Merge Authority** asks whether this result may be
+integrated without a further human decision. An authorized implementation and a
+passing Quality Gate do not themselves grant Merge Authority.
+
+Autonomous merge is permitted only if all of the following hold: the work and
+result remain within their approved authorization envelope; the current PR
+revision passed required independent Review, risk-proportionate QA, and required
+checks; blocking feedback and decisions are resolved; the integrating actor has
+merge authority; and no human-decision category below applies. An unavailable
+optional check does not count as a failure, but missing evidence needed for the
+Quality Gate prevents autonomous merge.
+
+A human decision is required before integration for material scope or acceptance
+changes, public-contract or requirements changes, significant architecture
+changes needing separate authority, support-boundary changes, security or
+governance boundary changes, destructive unrelated-state changes, and releases.
+Unresolved Reviewer/QA disagreement, insufficient or ambiguous verification,
+and explicit `needs-decision` also stop autonomous merge. Record the decision
+needed in GitHub; a specific human integration approval can authorize the
+Supervisor to perform that merge after the Quality Gate passes, but does not
+expand the autonomous envelope for later work. Do not equate execution approval
+with that integration decision.
+
+After integration or terminal non-completion, reconcile the linked Issue,
+Dedicated User Project, and parent work against their actual outcomes. A child
+handoff or merge does not automatically complete its parent. Re-inspect remaining
+children, blockers, and acceptance conditions; update the parent to reflect
+remaining actionable or terminal work without copying each child's canonical
+state into the parent or assuming new execution authority. Preserve durable
+continuation before cleaning up finished local execution context. Re-scan the
+GitHub queue before choosing the next item; a stale worktree is not a queue.
+
+### 6.3 Other completion paths
 
 GitHub-setting-only work follows `Inspect → Apply → Verify`, records concise
 evidence in its Issue, and creates no artificial repository PR. Research or
@@ -242,7 +326,7 @@ Organization-owned repositories, private repositories, enterprise environments,
 cross-owner Projects, and shared multi-repository Projects are not supported
 claims.
 
-This specification materially covers FR-001–FR-044, NFR-001–NFR-009,
+This specification materially covers FR-001–FR-051, NFR-001–NFR-009,
 CON-001–CON-005, PC-001–PC-003, RI-001–RI-006, and
 SUP-001–SUP-003. Requirement changes follow the traceability rules in
 `REQUIREMENTS.md`; examples and implementation possibilities are not additional

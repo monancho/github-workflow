@@ -56,6 +56,9 @@ examples, and rationale are non-normative unless they reference a requirement.
 | Discovery work | Tracked work whose authorized outcome is a decision about value, scope, or placement before independent implementation is approved; its work kind is separate from Project Status. |
 | Close reason | The native GitHub Issue close outcome: `Completed` for successful completion or `Not planned` for intentional non-completion. |
 | Authorization envelope | The approved scope, acceptance conditions, and constraints within which an executor may make implementation decisions. |
+| Implementation Plan | A concise durable snapshot of the approved execution direction, recorded with the tracked work before delegated repository changes begin. |
+| Quality Gate | The independent Review and acceptance-oriented QA required for a change before integration is considered. |
+| Merge Authority | Authority to integrate a reviewed result, distinct from authority to execute the work and from passing its Quality Gate. |
 | Managed state | Native GitHub configuration that the Core Profile declares and the Provisioning Capability is responsible for reconciling. |
 | Unrelated configuration | Existing target configuration outside managed state. |
 | Target repository | The repository to which the Core Profile is applied. |
@@ -95,8 +98,14 @@ The primary users are solo maintainers and small software teams that:
 The logical roles in the workflow are:
 
 - **Maintainer** — owns product scope and repository governance decisions.
+- **Supervisor** — reconstructs and coordinates authorized work, review, QA, and
+  integration decisions without treating delegation as a Sub-Issue relationship.
 - **Executor** — performs approved work within an authorization envelope.
-- **Reviewer** — evaluates changes and evidence against the approved work.
+- **Reviewer** — independently evaluates changes and evidence against the
+  approved work beyond Executor self-verification.
+- **QA** — verifies acceptance behavior in proportion to risk.
+- **Merge Authority** — decides whether a quality-passing result may be
+  integrated under the applicable authority envelope.
 - **Release Authority** — authorizes a release.
 
 One person may hold more than one role. A role describes authority and
@@ -120,6 +129,13 @@ responsibility, not whether its holder is human or an AI agent.
 | FR-042 | Newly discovered information MUST be handled within the current authorization envelope when it is an in-scope detail. Independent work MUST NOT be executed merely because an Issue or Sub-Issue was created; already authorized independent work MAY be tracked normally, while materially uncertain independent work MUST be tracked as Discovery before implementation is approved. | Review intake decisions for in-scope detail, authorized independent work, material uncertainty, and information with no tracking value. |
 | FR-043 | Discovery work MUST use the normal Project Status lifecycle independently of its work kind. Its decision MUST record Adopt, Split, Defer, or Reject as applicable; a finished Discovery MUST close as `Completed` when its decision work succeeds, including a Reject outcome. | Inspect Discovery outcomes and close reasons, including a completed Reject decision. |
 | FR-044 | Repository queue selection MUST require execution authority, satisfied real prerequisites, no unresolved external blocker or blocking decision, and compatibility with current sequencing and release scope. The responsible actor SHOULD continue applicable active or review work before starting unrelated Ready work unless an explicit policy or blocker justifies another choice. | Review queue scenarios involving active review, native dependency, unresolved external `blocked` condition, `needs-decision`, Discovery, and sequencing constraints. |
+| FR-045 | For supervised repository-change work, a Supervisor MUST inspect the authorizing Issue, latest material comments, applicable canonical documentation, linked PR/review/check state, Project state, and blockers/dependencies; MUST record a concise Implementation Plan before delegation; and MUST assign bounded execution with the authority boundary and needed context. | Inspect a delegated change from queue selection through a durable Issue plan and Executor handoff. |
+| FR-046 | A delegated Executor MUST work within the assigned authority, verify the change, commit and push durable work, and hand off a linked review-ready PR with concise evidence; the Executor MUST NOT merge its own handoff. Handoff and continuation MUST be reconstructable from the Issue, relevant comments, PR/diff/reviews, canonical documentation, and pushed branch without a former session or worktree. | Resume a change after removing the prior execution context; inspect PR and verification evidence. |
+| FR-047 | A tracked repository-change PR in the supervised flow MUST receive Review independent of Executor self-verification. Review MUST assess scope and acceptance, requirement traceability, semantic and cross-document consistency, relevant information flow and edge cases, unrelated changes, and evidence as applicable. Blocking findings MUST be recorded in GitHub and normal in-scope rework MUST return to the same Executor and PR for re-review. | Review a specification change with a semantic defect, correction, and re-review on one PR. |
+| FR-048 | QA for a supervised change MUST verify the authorizing acceptance conditions in proportion to risk, including applicable success, no-op, failure, recovery, idempotency, and integration behavior. A documented low-risk change MAY combine Reviewer and QA responsibilities, but Executor self-verification alone MUST NOT satisfy the independent Quality Gate. | Compare low- and high-risk acceptance scenarios and their independent evidence. |
+| FR-049 | Execution Authority, Quality Gate, and Merge Authority MUST be evaluated separately. Autonomous merge MAY occur only when execution was authorized, required Review and QA passed on the current PR revision, required checks passed, no blocking feedback or decision remains, the result is within the approved scope and merge authority, and no category requiring a human decision applies. | Inspect an autonomous-merge candidate and a quality-passing but human-required candidate. |
+| FR-050 | A human decision MUST precede integration of a material scope or acceptance change, public-contract or requirements change, significant architecture change requiring separate authority, support-boundary change, security or governance boundary change, destructive unrelated-state change, or release; unresolved Reviewer/QA disagreement, insufficient verification, or explicit `needs-decision` MUST also prevent autonomous merge. | Exercise each escalation category and verify no autonomous merge occurs. |
+| FR-051 | After each child work item reaches a terminal outcome, the Supervisor MUST re-inspect remaining parent work and reconcile the parent Issue and Project without duplicating child records or inferring new execution authority. After integration or terminal non-completion, the Supervisor MUST reconcile linked work, preserve reconstructable handoff state, and re-scan the repository queue before selecting further work. | Review a parent with remaining children and a completed child, then inspect reconciliation and the next queue scan. |
 
 ### 6.2 Authority model
 
