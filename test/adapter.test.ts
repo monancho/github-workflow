@@ -13,6 +13,7 @@ class GitHubFixture {
   options = ["Todo", "In Progress", "Done"];
   labels = ["unrelated"];
   member = false;
+  archivedItem = false;
   issueClosed = false;
   status: string | null = null;
   privateRepo = false;
@@ -69,11 +70,11 @@ class GitHubFixture {
         fields: { nodes: [{ __typename: "ProjectV2SingleSelectField", id: "field-id", name: "Status",
           options: this.options.map(name => ({ id: `opt-${name}`, name, color: "GRAY", description: "" })) }],
           pageInfo: { hasNextPage: false } },
-        items: { nodes: this.member ? [{ id: "item-id" }] : [] },
+        items: { nodes: this.member ? [{ id: "item-id", isArchived: this.archivedItem }] : [] },
       } } });
       if (query.includes("issue(number:$number)")) return Response.json({ data: { repository: { issue: {
         id: "issue-id", number: 7, state: this.issueClosed ? "CLOSED" : "OPEN", projectItems: {
-          nodes: this.member ? [{ id: "item-id", project: { id: "project-id" },
+          nodes: this.member ? [{ id: "item-id", isArchived: this.archivedItem, project: { id: "project-id" },
             fieldValueByName: this.status ? { name: this.status, optionId: `opt-${this.status}` } : null }] : [],
           pageInfo: { hasNextPage: false },
         },
@@ -158,4 +159,18 @@ test("adapter transitions an already-present closed Issue to Done", async () => 
   assert.equal(applied.outcome, "applied");
   assert.equal(fixture.status, "Done");
   assert.equal((await verify(port, request, planned, applied)).outcome, "verified");
+});
+
+test("archived Project membership cannot falsely satisfy tracked-Issue lifecycle", async () => {
+  const fixture = new GitHubFixture();
+  fixture.issuesEnabled = fixture.project = fixture.member = fixture.archivedItem = true;
+  fixture.options = [...statuses];
+  fixture.labels.push("needs-decision", "blocked");
+  fixture.status = "Ready";
+  const request = requestFor({ owner: "example", repository: "sample" }, [{ number: 7 }]);
+  const port = new GitHubCorePort("dummy-secret", fixture.fetch);
+  const inspected = await port.inspectManagedState(request);
+  assert.equal(inspected.resources.find(item => item.identity.kind === "issue-project-membership")?.classification, "conflicting");
+  assert.equal(plan(request, inspected).outcome, "blocked");
+  assert.deepEqual(fixture.writes, []);
 });

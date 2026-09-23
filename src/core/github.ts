@@ -6,12 +6,12 @@ type Fetcher = typeof fetch;
 type ProjectOption = { id?: string; name: string; color?: string; description?: string };
 type ProjectField = { __typename: string; id: string; name: string; options?: ProjectOption[] };
 type Project = { id: string; title: string; number: number; closed: boolean; owner?: { login?: string }; repositories: { nodes: { nameWithOwner: string }[]; pageInfo: { hasNextPage: boolean } }; fields: { nodes: ProjectField[]; pageInfo: { hasNextPage: boolean } }; items: { nodes: { id: string }[] } };
-type Issue = { id: string; number: number; state: "OPEN" | "CLOSED"; projectItems: { nodes: { id: string; project: { id: string }; fieldValueByName?: { name?: string; optionId?: string } | null }[]; pageInfo: { hasNextPage: boolean } } };
+type Issue = { id: string; number: number; state: "OPEN" | "CLOSED"; projectItems: { nodes: { id: string; isArchived: boolean; project: { id: string }; fieldValueByName?: { name?: string; optionId?: string } | null }[]; pageInfo: { hasNextPage: boolean } } };
 type Context = { repoId: string; ownerId: string; project?: Project; statusField?: ProjectField; issues: Map<number, Issue> };
 type ProjectsPage = { user?: { id: string; projectsV2: { nodes: { id: string; title: string }[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } } } };
 
-const projectQuery = `query($id:ID!){node(id:$id){... on ProjectV2{id title number closed owner{... on User{login}} repositories(first:100){nodes{nameWithOwner} pageInfo{hasNextPage}} fields(first:100){nodes{__typename ... on ProjectV2Field{id name} ... on ProjectV2SingleSelectField{id name options{id name color description}}} pageInfo{hasNextPage}} items(first:1){nodes{id}}}}}`;
-const issueQuery = `query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){issue(number:$number){id number state projectItems(first:100){nodes{id project{id} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name optionId}}} pageInfo{hasNextPage}}}}}`;
+const projectQuery = `query($id:ID!){node(id:$id){... on ProjectV2{id title number closed owner{... on User{login}} repositories(first:100){nodes{nameWithOwner} pageInfo{hasNextPage}} fields(first:100){nodes{__typename ... on ProjectV2Field{id name} ... on ProjectV2SingleSelectField{id name options{id name color description}}} pageInfo{hasNextPage}} items(first:1,archivedStates:[ARCHIVED,NOT_ARCHIVED]){nodes{id isArchived}}}}}`;
+const issueQuery = `query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){issue(number:$number){id number state projectItems(first:100,includeArchived:true){nodes{id isArchived project{id} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name optionId}}} pageInfo{hasNextPage}}}}}`;
 
 export class GitHubCorePort implements GitHubPort {
   private request?: ReconciliationRequest;
@@ -160,18 +160,18 @@ export class GitHubCorePort implements GitHubPort {
       for (const selected of request.trackedIssues) {
         const issue = issues.get(selected.number)!;
         const items = projectClass === "compatible" && project ? issue.projectItems.nodes.filter(item => item.project.id === project.id) : [];
-        const membershipClass = items.length > 1 ? "ambiguous" : items.length ? "compatible" : "missing";
+        const membershipClass = items.length > 1 ? "ambiguous" : items.length && items[0].isArchived ? "conflicting" : items.length ? "compatible" : "missing";
         const item = items[0];
         push({ identity: identity(request.target, "issue-project-membership", selected.number), classification: membershipClass,
           actual: { issueId: issue.id, issueState: issue.state, ...(item ? { itemId: item.id } : {}) }, safeDiagnostics: [] });
         const status = item?.fieldValueByName?.name;
         if (issue.state === "CLOSED") {
           push({ identity: identity(request.target, "closed-issue-project-status", selected.number),
-            classification: item && status === "Done" ? "compatible" : "missing",
+            classification: item?.isArchived ? "conflicting" : item && status === "Done" ? "compatible" : "missing",
             actual: { issueState: issue.state, status: status ?? null, ...(item ? { itemId: item.id } : {}) }, safeDiagnostics: [] });
         } else {
           push({ identity: identity(request.target, "issue-initial-project-status", selected.number),
-            classification: item ? "compatible" : "missing",
+            classification: item?.isArchived ? "conflicting" : item ? "compatible" : "missing",
             actual: { issueState: issue.state, status: status ?? null, ...(item ? { itemId: item.id } : {}) }, safeDiagnostics: [] });
         }
       }
