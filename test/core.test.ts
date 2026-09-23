@@ -53,7 +53,7 @@ class MemoryPort implements GitHubPort {
       else add("issue-initial-project-status", issue.member ? "compatible" : "missing",
         { issueState: "OPEN", status: issue.status }, selected.number);
     }
-    return { phase: "inspect", resourceScope: "core-profile", target: request.target, profile: request.profile,
+    return { schemaVersion: 1, phase: "inspect", resourceScope: "core-profile", target: request.target, profile: request.profile,
       observedAt: new Date().toISOString(), stateFingerprint: fingerprint(resources), capabilities: [], resources,
       unrelatedSummary: [
         ...this.unrelatedProjects.map(key => ({ kind: "dedicated-project" as const, key })),
@@ -168,7 +168,7 @@ test("Verify rejects missing event expectation and false Apply success", async (
   port.issues.set(11, { closed: false, member: false, status: null });
   const request = requestFor(target, [{ number: 11 }]);
   const planned = plan(request, await port.inspectManagedState(request));
-  const fabricated = { phase: "apply" as const, resourceScope: "core-profile" as const,
+  const fabricated = { schemaVersion: 1 as const, phase: "apply" as const, resourceScope: "core-profile" as const,
     planFingerprint: planned.planFingerprint, preflightInspectionFingerprint: planned.inspectionFingerprint,
     operations: planned.operations.map(operation => ({ operation, outcome: "applied" as const, safeDiagnostics: [] })),
     outcome: "applied" as const, safeDiagnostics: [] };
@@ -187,7 +187,7 @@ test("fresh status mismatch defeats a fabricated Apply success", async () => {
   const request = requestFor(target, [{ number: 13 }]);
   const planned = plan(request, await port.inspectManagedState(request));
   port.issues.set(13, { closed: false, member: true, status: "Ready" });
-  const fabricated = { phase: "apply" as const, resourceScope: "core-profile" as const,
+  const fabricated = { schemaVersion: 1 as const, phase: "apply" as const, resourceScope: "core-profile" as const,
     planFingerprint: planned.planFingerprint, preflightInspectionFingerprint: planned.inspectionFingerprint,
     operations: planned.operations.map(operation => ({ operation, outcome: "applied" as const, safeDiagnostics: [] })),
     outcome: "applied" as const, safeDiagnostics: [] };
@@ -245,7 +245,7 @@ test("malformed serialized phase bindings return structured non-success", async 
   const malformedPlan = { ...planned, initialStatusExpectations: [null] } as unknown as typeof planned;
   malformedPlan.planFingerprint = planFingerprint(malformedPlan);
   assert.equal((await apply(port, request, malformedPlan)).outcome, "blocked");
-  const malformedApply = { phase: "apply" as const, resourceScope: "core-profile" as const,
+  const malformedApply = { schemaVersion: 1 as const, phase: "apply" as const, resourceScope: "core-profile" as const,
     planFingerprint: planned.planFingerprint, preflightInspectionFingerprint: planned.inspectionFingerprint,
     operations: planned.operations.map(() => null), outcome: "applied" as const, safeDiagnostics: [] } as unknown as Awaited<ReturnType<typeof apply>>;
   assert.equal((await verify(port, request, planned, malformedApply)).outcome, "unverifiable");
@@ -281,6 +281,7 @@ test("saved Plan schema, profile, and normalized request identity are enforced b
   assert.equal(planned.requestIdentity, plan(requestFor(target, [{ number: 21 }, { number: 22 }]),
     await port.inspectManagedState(request)).requestIdentity);
   for (const changed of [
+    { ...planned, schemaVersion: 2 },
     { ...planned, planSchemaVersion: 2 },
     { ...planned, requestIdentity: "wrong" },
     { ...planned, profile: { ...planned.profile, version: "0.2.0" } },
@@ -390,6 +391,7 @@ test("CLI signal handling emits non-success Apply and Verify reports", async () 
   const preloadUrl = new URL("../../test/fixtures/signal-fetch.mjs", import.meta.url).href;
   const run = async (command: "apply" | "verify") => new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
     const args = ["--import", preloadUrl, cliPath, command, "--owner", target.owner, "--repo", target.repository,
+      "--profile", "v0.1.0-core-profile",
       "--plan", planFile, ...(command === "verify" ? ["--apply-report", applyFile] : [])];
     const child = spawn(process.execPath, args, { stdio: ["ignore", "pipe", "pipe"] });
     let stdout = "";
@@ -402,7 +404,7 @@ test("CLI signal handling emits non-success Apply and Verify reports", async () 
   try {
     await writeFile(planFile, JSON.stringify(ready));
     const applied = await run("apply");
-    assert.equal(applied.code, 1);
+    assert.equal(applied.code, 6);
     assert.ok(applied.stdout, JSON.stringify(applied));
     assert.equal(JSON.parse(applied.stdout).outcome, "interrupted");
     assert.equal(applied.stderr, "");
@@ -414,7 +416,7 @@ test("CLI signal handling emits non-success Apply and Verify reports", async () 
     await writeFile(planFile, JSON.stringify(noChange));
     await writeFile(applyFile, JSON.stringify(await apply(port, request, noChange)));
     const verified = await run("verify");
-    assert.equal(verified.code, 1);
+    assert.equal(verified.code, 5);
     assert.ok(verified.stdout, JSON.stringify(verified));
     assert.equal(JSON.parse(verified.stdout).outcome, "unverifiable");
     assert.equal(verified.stderr, "");

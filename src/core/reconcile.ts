@@ -21,7 +21,7 @@ function validPlan(value: unknown, request: ReconciliationRequest): value is Rec
       !Array.isArray(value.operations) || !Array.isArray(value.initialStatusExpectations) ||
       !Array.isArray(value.blockedResources) || !Array.isArray(value.warnings)) return false;
   const plan = value as ReconciliationPlan;
-  if (plan.phase !== "plan" || plan.resourceScope !== "core-profile" || plan.planSchemaVersion !== 1 ||
+  if (plan.schemaVersion !== 1 || plan.phase !== "plan" || plan.resourceScope !== "core-profile" || plan.planSchemaVersion !== 1 ||
       plan.requestIdentity !== requestIdentity(request) ||
       fingerprint(plan.target) !== fingerprint(request.target) || fingerprint(plan.profile) !== fingerprint(request.profile) ||
       plan.requestFingerprint !== fingerprint(request) || !plan.inspectionFingerprint ||
@@ -78,7 +78,7 @@ function validPlan(value: unknown, request: ReconciliationRequest): value is Rec
 }
 
 export function plan(request: ReconciliationRequest, inspected: InspectionReport): ReconciliationPlan {
-  if (inspected.phase !== "inspect" || inspected.resourceScope !== "core-profile" ||
+  if (inspected.schemaVersion !== 1 || inspected.phase !== "inspect" || inspected.resourceScope !== "core-profile" ||
       fingerprint(inspected.target) !== fingerprint(request.target) || fingerprint(inspected.profile) !== fingerprint(request.profile)) {
     throw new Error("Inspection does not match request");
   }
@@ -121,7 +121,7 @@ export function plan(request: ReconciliationRequest, inspected: InspectionReport
     }
   }
   const result: ReconciliationPlan = {
-    phase: "plan", resourceScope: "core-profile", planSchemaVersion: 1, requestIdentity: requestIdentity(request),
+    schemaVersion: 1, phase: "plan", resourceScope: "core-profile", planSchemaVersion: 1, requestIdentity: requestIdentity(request),
     target: request.target, profile: request.profile,
     requestFingerprint: fingerprint(request), inspectionFingerprint: inspected.stateFingerprint, planFingerprint: "",
     operations, initialStatusExpectations: expectations, warnings: [], blockedResources,
@@ -134,7 +134,7 @@ export function plan(request: ReconciliationRequest, inspected: InspectionReport
 export async function apply(port: GitHubPort, request: ReconciliationRequest, planned: ReconciliationPlan, signal?: AbortSignal): Promise<ApplyReport> {
   const valid = validPlan(planned, request);
   const report: ApplyReport = {
-    phase: "apply", resourceScope: "core-profile", planFingerprint: valid ? planned.planFingerprint : "",
+    schemaVersion: 1, phase: "apply", resourceScope: "core-profile", planFingerprint: valid ? planned.planFingerprint : "",
     preflightInspectionFingerprint: "", operations: valid ? planned.operations.map(operation => ({ operation, outcome: "not-attempted", safeDiagnostics: [] })) : [],
     outcome: "blocked", safeDiagnostics: [],
   };
@@ -230,11 +230,11 @@ function changedCount(report: ApplyReport): number { return report.operations.fi
 
 export async function verify(port: GitHubPort, request: ReconciliationRequest, planned: ReconciliationPlan, applied: ApplyReport, signal?: AbortSignal): Promise<VerificationReport> {
   const report: VerificationReport = {
-    phase: "verify", resourceScope: "core-profile", target: request.target, profile: request.profile,
+    schemaVersion: 1, phase: "verify", resourceScope: "core-profile", target: request.target, profile: request.profile,
     verifiedAt: new Date().toISOString(), resources: [], outcome: "unverifiable", safeDiagnostics: [],
   };
   if (!validPlan(planned, request) || !record(applied) || !Array.isArray(applied.operations) ||
-      applied.phase !== "apply" || applied.resourceScope !== "core-profile" ||
+      applied.schemaVersion !== 1 || applied.phase !== "apply" || applied.resourceScope !== "core-profile" ||
       applied.planFingerprint !== planned.planFingerprint || !applied.preflightInspectionFingerprint ||
       applied.operations.length !== planned.operations.length ||
       applied.operations.some((item, index) => !record(item) || !record(item.operation) ||
