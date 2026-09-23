@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "npm run build && node --test dist/test/core.test.js dist/test/adapter.test.js",
+    "test": "npm run build && node --test dist/test/core.test.js dist/test/adapter.test.js dist/test/cli.test.js",
     "cli": "node dist/src/cli.js"
   },
   "devDependencies": {

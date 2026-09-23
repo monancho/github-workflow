@@ -15,6 +15,7 @@ export type ResourceIdentity = { kind: ResourceKind; key: string };
 export type ObservationClass = "missing" | "compatible" | "conflicting" | "ambiguous" | "unrelated" | "unsupported" | "unverifiable";
 export type ResourceObservation = { identity: ResourceIdentity; classification: ObservationClass; actual?: unknown; safeDiagnostics: string[] };
 export type InspectionReport = {
+  schemaVersion: 1;
   phase: "inspect";
   resourceScope: "core-profile";
   target: TargetRef;
@@ -48,6 +49,7 @@ export type InitialStatusExpectation = {
   authorizationRef?: string;
 };
 export type ReconciliationPlan = {
+  schemaVersion: 1;
   phase: "plan";
   resourceScope: "core-profile";
   planSchemaVersion: 1;
@@ -65,6 +67,7 @@ export type ReconciliationPlan = {
 };
 export type AppliedOperation = { operation: PlannedOperation; outcome: "applied" | "already-conforming" | "blocked" | "failed" | "indeterminate" | "not-attempted"; safeDiagnostics: string[] };
 export type ApplyReport = {
+  schemaVersion: 1;
   phase: "apply";
   resourceScope: "core-profile";
   planFingerprint: string;
@@ -75,6 +78,7 @@ export type ApplyReport = {
 };
 export type ResourceVerification = { resource: ResourceIdentity; status: "conforming" | "non-conforming" | "unsupported" | "unverifiable"; safeDiagnostics: string[] };
 export type VerificationReport = {
+  schemaVersion: 1;
   phase: "verify";
   resourceScope: "core-profile";
   target: TargetRef;

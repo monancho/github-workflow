@@ -11,6 +11,8 @@ class GitHubFixture {
   duplicateProject = false;
   linked = true;
   options = ["Todo", "In Progress", "Done"];
+  optionDescription = "";
+  lastStatusOptions: { name: string; description: string }[] = [];
   labels = ["unrelated"];
   member = false;
   archivedItem = false;
@@ -45,6 +47,7 @@ class GitHubFixture {
         return Response.json({ data: { createProjectV2: { projectV2: { id: "project-id" } } } });
       }
       if (query.includes("updateProjectV2Field(input:") || query.includes("createProjectV2Field(input:")) {
+        this.lastStatusOptions = variables.input.singleSelectOptions;
         this.options = variables.input.singleSelectOptions.map((value: { name: string }) => value.name);
         this.writes.push("statuses");
         return Response.json({ data: { updateProjectV2Field: { projectV2Field: { id: "field-id" } } } });
@@ -68,7 +71,7 @@ class GitHubFixture {
         id: "project-id", title: "sample", number: 2, closed: this.projectClosed, owner: { login: "example" },
         repositories: { nodes: [{ nameWithOwner: this.linked ? "example/sample" : "example/other" }], pageInfo: { hasNextPage: false } },
         fields: { nodes: [{ __typename: "ProjectV2SingleSelectField", id: "field-id", name: "Status",
-          options: this.options.map(name => ({ id: `opt-${name}`, name, color: "GRAY", description: "" })) }],
+          options: this.options.map(name => ({ id: `opt-${name}`, name, color: "GRAY", description: this.optionDescription })) }],
           pageInfo: { hasNextPage: false } },
         items: { nodes: this.member ? [{ id: "item-id", isArchived: this.archivedItem }] : [] },
       } } });
@@ -303,4 +306,20 @@ test("a thrown read-network error retries, but mid-Apply authorization loss stop
   assert.equal(result.outcome, "partial-failure");
   assert.deepEqual(fixture.writes, ["issues"]);
   assert.doesNotMatch(JSON.stringify(result), /dummy-secret/);
+});
+
+test("Status option descriptions remain private in reports while compatible values are preserved", async () => {
+  const fixture = new GitHubFixture();
+  fixture.issuesEnabled = fixture.project = true;
+  fixture.optionDescription = "dummy-secret";
+  fixture.labels.push("needs-decision", "blocked");
+  const request = requestFor({ owner: "example", repository: "sample" });
+  const port = new GitHubCorePort("dummy-secret", fixture.fetch);
+  const inspected = await port.inspectManagedState(request);
+  const planned = plan(request, inspected);
+  assert.doesNotMatch(JSON.stringify(inspected) + JSON.stringify(planned), /dummy-secret/);
+  const applied = await apply(port, request, planned);
+  assert.equal(applied.outcome, "applied");
+  assert.equal(fixture.lastStatusOptions.find(option => option.name === "In Progress")?.description, "dummy-secret");
+  assert.doesNotMatch(JSON.stringify(applied), /dummy-secret/);
 });

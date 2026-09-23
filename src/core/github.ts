@@ -114,7 +114,7 @@ export class GitHubCorePort implements GitHubPort {
       ...request.trackedIssues.flatMap(issue => [identity(request.target, "issue-project-membership", issue.number),
         identity(request.target, issue.authorizedInitialStatus ? "issue-initial-project-status" : "closed-issue-project-status", issue.number)]),
     ].map(resource => ({ identity: resource, classification, safeDiagnostics: [diagnostic] }));
-    return { phase: "inspect", resourceScope: "core-profile", target: request.target, profile: request.profile,
+    return { schemaVersion: 1, phase: "inspect", resourceScope: "core-profile", target: request.target, profile: request.profile,
       observedAt: new Date().toISOString(), stateFingerprint: fingerprint(resources), capabilities: [], resources,
       unrelatedSummary: [], outcome: classification === "unsupported" ? "unsupported" : "unverifiable", safeDiagnostics: [diagnostic] };
   }
@@ -184,7 +184,9 @@ export class GitHubCorePort implements GitHubPort {
           const defaultTemplate = names.length === 3 && ["Todo", "In Progress", "Done"].every(name => names.includes(name)) && !project.items.nodes.length;
           statusClass = duplicates || extras.length && !defaultTemplate ? "conflicting" :
             names.length === statuses.length && statuses.every(name => names.includes(name)) ? "compatible" : "missing";
-          statusActual = { projectId: project.id, fieldId: statusField.id, options: statusField.options, defaultTemplate };
+          statusActual = { projectId: project.id, fieldId: statusField.id, optionCount: names.length,
+            canonicalOptions: names.filter(name => statuses.includes(name as StandardProjectStatus)),
+            optionsFingerprint: fingerprint(statusField.options), defaultTemplate };
         }
       } else if (projectClass !== "missing") statusClass = projectClass;
       push({ identity: identity(request.target, "project-statuses"), classification: statusClass,
@@ -218,7 +220,7 @@ export class GitHubCorePort implements GitHubPort {
         ...foundLabels.filter(item => !labels.some(label => label.name === item.name.toLowerCase()))
           .map(item => ({ kind: "managed-label" as const, key: `unrelated-label:${item.name}` })),
       ];
-      return { phase: "inspect", resourceScope: "core-profile", target: request.target, profile: request.profile,
+      return { schemaVersion: 1, phase: "inspect", resourceScope: "core-profile", target: request.target, profile: request.profile,
         observedAt: new Date().toISOString(), stateFingerprint: fingerprint(resources),
         capabilities: [{ capability: "project-item-add", status: this.token ? "available" : "unknown", safeDiagnostics: [] }],
         resources, unrelatedSummary, outcome: "inspected", safeDiagnostics: [] };
