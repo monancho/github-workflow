@@ -12,12 +12,17 @@ function sameIdentity(a: ResourceIdentity, b: ResourceIdentity): boolean {
 function observationFor(report: InspectionReport, resource: ResourceIdentity): ResourceObservation | undefined {
   return report.resources.find(item => sameIdentity(item.identity, resource));
 }
+function requestIdentity(request: ReconciliationRequest): string {
+  return fingerprint({ target: request.target, profile: request.profile,
+    trackedIssues: [...request.trackedIssues].sort((a, b) => a.number - b.number) });
+}
 function validPlan(value: unknown, request: ReconciliationRequest): value is ReconciliationPlan {
   if (!record(value) || !record(value.target) || !record(value.profile) ||
       !Array.isArray(value.operations) || !Array.isArray(value.initialStatusExpectations) ||
       !Array.isArray(value.blockedResources) || !Array.isArray(value.warnings)) return false;
   const plan = value as ReconciliationPlan;
-  if (plan.phase !== "plan" || plan.resourceScope !== "core-profile" ||
+  if (plan.phase !== "plan" || plan.resourceScope !== "core-profile" || plan.planSchemaVersion !== 1 ||
+      plan.requestIdentity !== requestIdentity(request) ||
       fingerprint(plan.target) !== fingerprint(request.target) || fingerprint(plan.profile) !== fingerprint(request.profile) ||
       plan.requestFingerprint !== fingerprint(request) || !plan.inspectionFingerprint ||
       plan.planFingerprint !== planFingerprint(plan) || !["no-change", "ready", "blocked"].includes(plan.outcome)) return false;
@@ -116,7 +121,8 @@ export function plan(request: ReconciliationRequest, inspected: InspectionReport
     }
   }
   const result: ReconciliationPlan = {
-    phase: "plan", resourceScope: "core-profile", target: request.target, profile: request.profile,
+    phase: "plan", resourceScope: "core-profile", planSchemaVersion: 1, requestIdentity: requestIdentity(request),
+    target: request.target, profile: request.profile,
     requestFingerprint: fingerprint(request), inspectionFingerprint: inspected.stateFingerprint, planFingerprint: "",
     operations, initialStatusExpectations: expectations, warnings: [], blockedResources,
     outcome: blockedResources.length || inspected.outcome !== "inspected" ? "blocked" : operations.length ? "ready" : "no-change",
@@ -125,7 +131,7 @@ export function plan(request: ReconciliationRequest, inspected: InspectionReport
   return result;
 }
 
-export async function apply(port: GitHubPort, request: ReconciliationRequest, planned: ReconciliationPlan): Promise<ApplyReport> {
+export async function apply(port: GitHubPort, request: ReconciliationRequest, planned: ReconciliationPlan, signal?: AbortSignal): Promise<ApplyReport> {
   const valid = validPlan(planned, request);
   const report: ApplyReport = {
     phase: "apply", resourceScope: "core-profile", planFingerprint: valid ? planned.planFingerprint : "",
@@ -137,7 +143,9 @@ export async function apply(port: GitHubPort, request: ReconciliationRequest, pl
     return report;
   }
   try {
+    if (signal?.aborted) { report.outcome = "interrupted"; report.safeDiagnostics.push("Interrupted before Apply; inspect and re-plan before retry"); return report; }
     const preflight = await port.inspectManagedState(request);
+    if (signal?.aborted) { report.outcome = "interrupted"; report.safeDiagnostics.push("Interrupted during Apply inspection; inspect and re-plan before retry"); return report; }
     report.preflightInspectionFingerprint = preflight.stateFingerprint;
     if (preflight.outcome !== "inspected") {
       report.safeDiagnostics.push("Preflight inspection did not succeed");
@@ -150,10 +158,12 @@ export async function apply(port: GitHubPort, request: ReconciliationRequest, pl
     }
     let changed = 0;
     for (let index = 0; index < planned.operations.length; index++) {
+      if (signal?.aborted) { report.outcome = "interrupted"; report.safeDiagnostics.push("Interrupted during Apply; inspect and re-plan before retry"); return report; }
       const operation = planned.operations[index];
       if (operation.dependsOn.some(id => !report.operations.some(item => item.operation.id === id &&
           ["applied", "already-conforming"].includes(item.outcome)))) continue;
       const current = index === 0 ? preflight : await port.checkPreconditions([operation]);
+      if (signal?.aborted) { report.outcome = "interrupted"; report.safeDiagnostics.push("Interrupted during Apply inspection; inspect and re-plan before retry"); return report; }
       const observation = observationFor(current, operation.resource);
       const expected = operation.preconditions[0]?.expectedFingerprint;
       const dependencyApplied = operation.dependsOn.some(id => report.operations.some(item => item.operation.id === id && item.outcome === "applied"));
@@ -185,13 +195,21 @@ export async function apply(port: GitHubPort, request: ReconciliationRequest, pl
       }
       try {
         const outcome = await port.execute(operation);
+        if (signal?.aborted) {
+          report.operations[index].outcome = "indeterminate";
+          report.operations[index].safeDiagnostics.push("Mutation outcome is uncertain after interruption; inspect and re-plan");
+          report.outcome = "interrupted";
+          return report;
+        }
         if (outcome.outcome !== "applied" || fingerprint(outcome.operation) !== fingerprint(operation)) throw new Error("Invalid operation result");
         report.operations[index] = outcome;
         changed++;
       } catch {
-        report.operations[index].outcome = "failed";
-        report.operations[index].safeDiagnostics.push("Managed operation failed; inspect and re-plan before retry");
-        report.outcome = changed ? "partial-failure" : "failed";
+        report.operations[index].outcome = "indeterminate";
+        report.operations[index].safeDiagnostics.push(signal?.aborted ?
+          "Mutation outcome is uncertain after interruption; inspect and re-plan" :
+          "Mutation outcome is uncertain after failure; inspect and re-plan before retry");
+        report.outcome = signal?.aborted ? "interrupted" : "partial-failure";
         return report;
       }
     }
@@ -200,17 +218,17 @@ export async function apply(port: GitHubPort, request: ReconciliationRequest, pl
       report.safeDiagnostics.push("A dependent operation was not attempted");
       return report;
     }
-    report.outcome = "applied";
+    report.outcome = signal?.aborted ? "interrupted" : "applied";
     return report;
   } catch {
-    report.outcome = changedCount(report) ? "partial-failure" : "failed";
+    report.outcome = signal?.aborted ? "interrupted" : changedCount(report) ? "partial-failure" : "failed";
     report.safeDiagnostics.push("GitHub inspection failed; inspect and re-plan before retry");
     return report;
   }
 }
 function changedCount(report: ApplyReport): number { return report.operations.filter(item => item.outcome === "applied").length; }
 
-export async function verify(port: GitHubPort, request: ReconciliationRequest, planned: ReconciliationPlan, applied: ApplyReport): Promise<VerificationReport> {
+export async function verify(port: GitHubPort, request: ReconciliationRequest, planned: ReconciliationPlan, applied: ApplyReport, signal?: AbortSignal): Promise<VerificationReport> {
   const report: VerificationReport = {
     phase: "verify", resourceScope: "core-profile", target: request.target, profile: request.profile,
     verifiedAt: new Date().toISOString(), resources: [], outcome: "unverifiable", safeDiagnostics: [],
@@ -221,7 +239,7 @@ export async function verify(port: GitHubPort, request: ReconciliationRequest, p
       applied.operations.length !== planned.operations.length ||
       applied.operations.some((item, index) => !record(item) || !record(item.operation) ||
         !Array.isArray(item.safeDiagnostics) ||
-        !["applied", "already-conforming", "blocked", "failed", "not-attempted"].includes(String(item.outcome)) ||
+        !["applied", "already-conforming", "blocked", "failed", "indeterminate", "not-attempted"].includes(String(item.outcome)) ||
         fingerprint(item.operation) !== fingerprint(planned.operations[index]))) {
     report.safeDiagnostics.push("Plan or Apply report does not match request");
     return report;
@@ -248,7 +266,9 @@ export async function verify(port: GitHubPort, request: ReconciliationRequest, p
     return report;
   }
   try {
+    if (signal?.aborted) { report.safeDiagnostics.push("Interrupted before Verify; inspect and re-plan before retry"); return report; }
     const fresh = await port.inspectManagedState(request);
+    if (signal?.aborted) { report.safeDiagnostics.push("Interrupted during Verify; inspect and re-plan before retry"); return report; }
     report.resources = fresh.resources.map(observation => ({
       resource: observation.identity,
       status: observation.classification === "compatible" ? "conforming" :
@@ -285,8 +305,8 @@ export async function verify(port: GitHubPort, request: ReconciliationRequest, p
     else report.outcome = "verified";
     return report;
   } catch {
-    report.outcome = "failed";
-    report.safeDiagnostics.push("Fresh GitHub verification read failed");
+    report.outcome = signal?.aborted ? "unverifiable" : "failed";
+    report.safeDiagnostics.push(signal?.aborted ? "Interrupted during Verify; inspect and re-plan before retry" : "Fresh GitHub verification read failed");
     return report;
   }
 }

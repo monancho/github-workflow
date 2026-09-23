@@ -264,3 +264,112 @@ test("Verify rejects an incomplete fresh resource set", async () => {
   };
   assert.equal((await verify(port, request, planned, applied)).outcome, "unverifiable");
 });
+
+test("saved Plan schema, profile, and normalized request identity are enforced before mutation", async () => {
+  const port = new MemoryPort();
+  const request = requestFor(target, [{ number: 22 }, { number: 21 }]);
+  port.issues.set(21, { closed: false, member: false, status: null });
+  port.issues.set(22, { closed: false, member: false, status: null });
+  const planned = plan(request, await port.inspectManagedState(request));
+  assert.equal(planned.planSchemaVersion, 1);
+  assert.equal(planned.requestIdentity, plan(requestFor(target, [{ number: 21 }, { number: 22 }]),
+    await port.inspectManagedState(request)).requestIdentity);
+  for (const changed of [
+    { ...planned, planSchemaVersion: 2 },
+    { ...planned, requestIdentity: "wrong" },
+    { ...planned, profile: { ...planned.profile, version: "0.2.0" } },
+  ]) {
+    changed.planFingerprint = planFingerprint(changed as typeof planned);
+    assert.equal((await apply(port, request, changed as typeof planned)).outcome, "blocked");
+  }
+  assert.deepEqual(port.writes, []);
+});
+
+test("interrupted mutation remains indeterminate and recovers through fresh Inspect and Plan", async () => {
+  const port = new MemoryPort();
+  const request = requestFor(target);
+  const planned = plan(request, await port.inspectManagedState(request));
+  const cancellation = new AbortController();
+  const execute = port.execute.bind(port);
+  port.execute = async operation => {
+    const result = await execute(operation);
+    cancellation.abort();
+    return result;
+  };
+  const interrupted = await apply(port, request, planned, cancellation.signal);
+  assert.equal(interrupted.outcome, "interrupted");
+  assert.equal(interrupted.operations[0].outcome, "indeterminate");
+  assert.notEqual((await verify(port, request, planned, interrupted)).outcome, "verified");
+  const recovery = plan(request, await port.inspectManagedState(request));
+  assert.ok(!recovery.operations.some(operation => operation.kind === "ensure-repository-issues"));
+  assert.equal((await verify(port, request, recovery, await apply(port, request, recovery))).outcome, "verified");
+});
+
+test("interruption during Verify cannot claim a conforming result", async () => {
+  const port = new MemoryPort();
+  port.issuesEnabled = port.projectExists = true;
+  port.statusOptions = [...statuses];
+  port.labelNames.push(...labels.map(label => label.name));
+  const request = requestFor(target);
+  const planned = plan(request, await port.inspectManagedState(request));
+  const applied = await apply(port, request, planned);
+  const cancellation = new AbortController();
+  const inspect = port.inspectManagedState.bind(port);
+  port.inspectManagedState = async selected => {
+    const result = await inspect(selected);
+    cancellation.abort();
+    return result;
+  };
+  const verified = await verify(port, request, planned, applied, cancellation.signal);
+  assert.equal(verified.outcome, "unverifiable");
+  assert.equal(plan(request, await inspect(request)).outcome, "no-change");
+});
+
+test("managed-state drift before Apply and between operations blocks unsafe writes", async () => {
+  const request = requestFor(target);
+  const conforming = new MemoryPort();
+  conforming.issuesEnabled = conforming.projectExists = true;
+  conforming.statusOptions = [...statuses];
+  conforming.labelNames.push(...labels.map(label => label.name));
+  const noChange = plan(request, await conforming.inspectManagedState(request));
+  conforming.labelNames.pop();
+  assert.equal((await apply(conforming, request, noChange)).outcome, "blocked");
+  assert.deepEqual(conforming.writes, []);
+
+  const port = new MemoryPort();
+  const planned = plan(request, await port.inspectManagedState(request));
+  const check = port.checkPreconditions.bind(port);
+  port.checkPreconditions = async operations => {
+    if (operations[0].kind === "ensure-dedicated-project") port.projectConflict = true;
+    return check(operations);
+  };
+  const applied = await apply(port, request, planned);
+  assert.equal(applied.outcome, "partial-failure");
+  assert.deepEqual(port.writes, ["ensure-repository-issues"]);
+  port.projectConflict = false;
+  port.checkPreconditions = check;
+  const recovered = plan(request, await port.inspectManagedState(request));
+  assert.ok(!recovered.operations.some(operation => operation.kind === "ensure-repository-issues"));
+  assert.equal((await verify(port, request, recovered, await apply(port, request, recovered))).outcome, "verified");
+});
+
+test("competing execution failure leaves an uncertain operation for fresh recovery", async () => {
+  const port = new MemoryPort();
+  port.issuesEnabled = port.projectExists = true;
+  port.statusOptions = [...statuses];
+  port.labelNames.push("needs-decision");
+  const request = requestFor(target);
+  const planned = plan(request, await port.inspectManagedState(request));
+  const execute = port.execute.bind(port);
+  port.execute = async operation => {
+    if (operation.kind === "ensure-managed-label") {
+      port.labelNames.push("blocked");
+      throw new Error("remote write result lost");
+    }
+    return execute(operation);
+  };
+  const result = await apply(port, request, planned);
+  assert.equal(result.outcome, "partial-failure");
+  assert.equal(result.operations[0].outcome, "indeterminate");
+  assert.equal(plan(request, await port.inspectManagedState(request)).outcome, "no-change");
+});

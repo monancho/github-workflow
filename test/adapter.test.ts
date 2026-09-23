@@ -174,3 +174,96 @@ test("archived Project membership cannot falsely satisfy tracked-Issue lifecycle
   assert.equal(plan(request, inspected).outcome, "blocked");
   assert.deepEqual(fixture.writes, []);
 });
+
+test("read-only transient and rate-limit responses retry, while mutation failures do not", async () => {
+  const fixture = new GitHubFixture();
+  const request = requestFor({ owner: "example", repository: "sample" });
+  let repoReads = 0;
+  let projectReads = 0;
+  let labelWrites = 0;
+  const fetcher: typeof fetch = async (input, init) => {
+    const url = String(input);
+    if (url.endsWith("/sample") && !init?.method && repoReads++ === 0)
+      return Response.json({ message: "transient" }, { status: 503 });
+    if (url.endsWith("/graphql") && String(init?.body).includes("projectsV2(first:100") && projectReads++ === 0)
+      return Response.json({ message: "limited" }, { status: 429, headers: { "retry-after": "0" } });
+    if (url.endsWith("/labels") && init?.method === "POST") {
+      labelWrites++;
+      return Response.json({ message: "Bearer dummy-secret" }, { status: 503 });
+    }
+    return fixture.fetch(input, init);
+  };
+  const port = new GitHubCorePort("dummy-secret", fetcher);
+  const inspected = await port.inspectManagedState(request);
+  assert.equal(inspected.outcome, "inspected");
+  assert.equal(repoReads, 2);
+  assert.equal(projectReads, 2);
+  const applied = await apply(port, request, plan(request, inspected));
+  assert.equal(applied.outcome, "partial-failure");
+  assert.equal(labelWrites, 1);
+  assert.doesNotMatch(JSON.stringify(applied), /dummy-secret/);
+});
+
+test("pagination includes later managed labels and unrelated Projects", async () => {
+  const fixture = new GitHubFixture();
+  fixture.issuesEnabled = fixture.project = true;
+  fixture.options = [...statuses];
+  const request = requestFor({ owner: "example", repository: "sample" });
+  let projectPages = 0;
+  let labelPages = 0;
+  const fetcher: typeof fetch = async (input, init) => {
+    const url = String(input);
+    if (url.includes("/labels?")) {
+      labelPages++;
+      if (url.includes("page=2")) return Response.json([{ name: "blocked" }, { name: "other" }]);
+      return Response.json([{ name: "needs-decision" }], { headers: {
+        link: '<https://api.github.com/repos/example/sample/labels?per_page=100&page=2>; rel="next"',
+      } });
+    }
+    if (url.endsWith("/graphql") && String(init?.body).includes("projectsV2(first:100")) {
+      projectPages++;
+      const { variables } = JSON.parse(String(init?.body)) as { variables: { after?: string } };
+      if (!variables.after) return Response.json({ data: { user: { id: "owner-id", projectsV2: {
+        nodes: [{ id: "unrelated-first", title: "other-first" }], pageInfo: { hasNextPage: true, endCursor: "next" },
+      } } } });
+    }
+    return fixture.fetch(input, init);
+  };
+  const port = new GitHubCorePort("dummy-secret", fetcher);
+  const inspected = await port.inspectManagedState(request);
+  assert.equal(inspected.outcome, "inspected");
+  assert.equal(projectPages, 2);
+  assert.equal(labelPages, 2);
+  assert.ok(inspected.unrelatedSummary.some(item => item.key === "unrelated-project:unrelated-first"));
+  assert.equal(plan(request, inspected).outcome, "no-change");
+});
+
+test("authorization loss and partial GraphQL data stay unverifiable", async () => {
+  const request = requestFor({ owner: "example", repository: "sample" });
+  const unauthorized = new GitHubCorePort("dummy-secret", async () =>
+    Response.json({ message: "Bearer dummy-secret" }, { status: 401 }));
+  const result = await unauthorized.inspectManagedState(request);
+  assert.equal(result.outcome, "unverifiable");
+  assert.match(result.safeDiagnostics.join(" "), /authorization/);
+  assert.doesNotMatch(JSON.stringify(result), /dummy-secret/);
+  const fixture = new GitHubFixture();
+  const partial = new GitHubCorePort("dummy-secret", async (input, init) =>
+    String(input).endsWith("/graphql") ? Response.json({ data: { user: null }, errors: [{ message: "partial" }] }) :
+      fixture.fetch(input, init));
+  assert.equal((await partial.inspectManagedState(request)).outcome, "unverifiable");
+});
+
+test("primary rate limit does not retry before reset", async () => {
+  const request = requestFor({ owner: "example", repository: "sample" });
+  let attempts = 0;
+  const port = new GitHubCorePort("dummy-secret", async () => {
+    attempts++;
+    return Response.json({ message: "limited" }, { status: 403, headers: {
+      "x-ratelimit-remaining": "0", "x-ratelimit-reset": String(Math.floor(Date.now() / 1000) + 60),
+    } });
+  });
+  const inspected = await port.inspectManagedState(request);
+  assert.equal(inspected.outcome, "unverifiable");
+  assert.match(inspected.safeDiagnostics.join(" "), /rate limit/);
+  assert.equal(attempts, 1);
+});
