@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { writeFile, unlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import { fingerprint } from "../src/domain.js";
 import { apply, plan, verify } from "../src/core/reconcile.js";
 import { identity, labels, requestFor, statuses } from "../src/core/profile.js";
@@ -372,4 +378,47 @@ test("competing execution failure leaves an uncertain operation for fresh recove
   assert.equal(result.outcome, "partial-failure");
   assert.equal(result.operations[0].outcome, "indeterminate");
   assert.equal(plan(request, await port.inspectManagedState(request)).outcome, "no-change");
+});
+
+test("CLI signal handling emits non-success Apply and Verify reports", async () => {
+  const request = requestFor(target);
+  const port = new MemoryPort();
+  const ready = plan(request, await port.inspectManagedState(request));
+  const planFile = join(tmpdir(), `github-workflow-plan-${randomUUID()}.json`);
+  const applyFile = join(tmpdir(), `github-workflow-apply-${randomUUID()}.json`);
+  const cliPath = fileURLToPath(new URL("../src/cli.js", import.meta.url));
+  const preloadUrl = new URL("../../test/fixtures/signal-fetch.mjs", import.meta.url).href;
+  const run = async (command: "apply" | "verify") => new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
+    const args = ["--import", preloadUrl, cliPath, command, "--owner", target.owner, "--repo", target.repository,
+      "--plan", planFile, ...(command === "verify" ? ["--apply-report", applyFile] : [])];
+    const child = spawn(process.execPath, args, { stdio: ["ignore", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8").on("data", chunk => { stdout += chunk; });
+    child.stderr.setEncoding("utf8").on("data", chunk => { stderr += chunk; });
+    child.on("error", reject);
+    child.on("close", code => resolve({ code, stdout, stderr }));
+  });
+  try {
+    await writeFile(planFile, JSON.stringify(ready));
+    const applied = await run("apply");
+    assert.equal(applied.code, 1);
+    assert.ok(applied.stdout, JSON.stringify(applied));
+    assert.equal(JSON.parse(applied.stdout).outcome, "interrupted");
+    assert.equal(applied.stderr, "");
+
+    port.issuesEnabled = port.projectExists = true;
+    port.statusOptions = [...statuses];
+    port.labelNames.push(...labels.map(label => label.name));
+    const noChange = plan(request, await port.inspectManagedState(request));
+    await writeFile(planFile, JSON.stringify(noChange));
+    await writeFile(applyFile, JSON.stringify(await apply(port, request, noChange)));
+    const verified = await run("verify");
+    assert.equal(verified.code, 1);
+    assert.ok(verified.stdout, JSON.stringify(verified));
+    assert.equal(JSON.parse(verified.stdout).outcome, "unverifiable");
+    assert.equal(verified.stderr, "");
+  } finally {
+    await Promise.allSettled([unlink(planFile), unlink(applyFile)]);
+  }
 });

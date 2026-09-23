@@ -267,3 +267,29 @@ test("primary rate limit does not retry before reset", async () => {
   assert.match(inspected.safeDiagnostics.join(" "), /rate limit/);
   assert.equal(attempts, 1);
 });
+
+test("a thrown read-network error retries, but mid-Apply authorization loss stops later writes", async () => {
+  const fixture = new GitHubFixture();
+  const request = requestFor({ owner: "example", repository: "sample" });
+  let repoReads = 0;
+  let afterWrite = false;
+  const fetcher: typeof fetch = async (input, init) => {
+    const url = String(input);
+    if (url.endsWith("/sample") && !init?.method) {
+      repoReads++;
+      if (repoReads === 1) throw new Error("network lost");
+      if (afterWrite) return Response.json({ message: "Bearer dummy-secret" }, { status: 401 });
+    }
+    const response = await fixture.fetch(input, init);
+    if (url.endsWith("/sample") && init?.method === "PATCH") afterWrite = true;
+    return response;
+  };
+  const port = new GitHubCorePort("dummy-secret", fetcher);
+  const inspected = await port.inspectManagedState(request);
+  assert.equal(inspected.outcome, "inspected");
+  assert.equal(repoReads, 2);
+  const result = await apply(port, request, plan(request, inspected));
+  assert.equal(result.outcome, "partial-failure");
+  assert.deepEqual(fixture.writes, ["issues"]);
+  assert.doesNotMatch(JSON.stringify(result), /dummy-secret/);
+});
