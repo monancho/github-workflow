@@ -128,8 +128,9 @@ review steps; they do not need to encode canonical Issue or Project state.
 
 Use squash merge by default for one accepted Pull Request to become one durable
 `main` commit. Make the Pull Request title a concise description of the accepted
-change because it supplies the squash commit subject. Record a reason in the
-Pull Request when another merge method better preserves meaningful history.
+change and use it as the squash commit subject, overriding GitHub's proposed
+subject when needed. Record a reason in the Pull Request when another merge
+method better preserves meaningful history.
 Review and Merge Authority requirements in this document still govern every
 merge method.
 
