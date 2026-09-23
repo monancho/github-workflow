@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { GitHubLabelPort } from "../src/github.js";
 import { apply, plan, verify } from "../src/reconcile.js";
 import { requestFor } from "../src/profile.js";
+import type { ApplyReport, ReconciliationPlan } from "../src/domain.js";
 
 const request = requestFor({ owner: "example", repository: "sample" });
 
@@ -105,6 +106,21 @@ test("fresh Verify rejects a false Apply success claim", async () => {
   fabricated.planFingerprint = planned.planFingerprint;
   fabricated.preflightInspectionFingerprint = "";
   assert.equal((await verify(port, request, planned, fabricated)).outcome, "unverifiable");
+});
+
+test("malformed serialized phase reports remain structured non-success outcomes", async () => {
+  const fixture = new Fixture(["needs-decision", "blocked"]);
+  const port = fixture.port();
+  const planned = plan(request, await port.inspectManagedState(request));
+  const applied = await apply(port, request, planned);
+  const missingOperations = { ...applied, operations: null } as unknown as ApplyReport;
+  const verification = await verify(port, request, planned, missingOperations);
+  assert.equal(verification.outcome, "unverifiable");
+  assert.equal(verification.phase, "verify");
+  const incompletePlan = { ...planned, operations: null } as unknown as ReconciliationPlan;
+  const blocked = await apply(port, request, incompletePlan);
+  assert.equal(blocked.outcome, "blocked");
+  assert.equal(fixture.posts, 0);
 });
 
 test("unsupported targets do not produce executable plans", async () => {

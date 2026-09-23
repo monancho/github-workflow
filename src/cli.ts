@@ -50,6 +50,6 @@ async function main(): Promise<number> {
 }
 
 main().then(code => { process.exitCode = code; }).catch(() => {
-  process.stderr.write("Invalid input or local file; no GitHub changes were made by this command\n");
+  process.stderr.write("Command failed before a structured result could be produced; inspect target state before retry\n");
   process.exitCode = 2;
 });

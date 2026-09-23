@@ -2,9 +2,50 @@ import { fingerprint, observationFingerprint, planFingerprint } from "./domain.j
 import type { ApplyReport, GitHubPort, InspectionReport, PlannedOperation, ReconciliationPlan, ReconciliationRequest, VerificationReport } from "./domain.js";
 import { labels } from "./profile.js";
 
+function record(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function validOperation(value: unknown): value is PlannedOperation {
+  if (!record(value) || !record(value.resource) || !Array.isArray(value.preconditions) ||
+      !Array.isArray(value.dependsOn)) return false;
+  const key = value.resource.key;
+  return value.kind === "ensure-managed-label" && value.resource.kind === "managed-label" &&
+    labels.some(label => label.name === key) && value.id === `ensure-managed-label:${key}` &&
+    value.preconditions.length === 1 && record(value.preconditions[0]) &&
+    record(value.preconditions[0].resource) && value.preconditions[0].resource.kind === "managed-label" &&
+    value.preconditions[0].resource.key === key &&
+    typeof value.preconditions[0].expectedFingerprint === "string" &&
+    value.preconditions[0].expectedFingerprint.length > 0 && value.dependsOn.length === 0 &&
+    typeof value.expectedEffect === "string" && value.expectedEffect.length > 0;
+}
+
+function validPlanShape(value: unknown): value is ReconciliationPlan {
+  if (!record(value) || !record(value.target) || !record(value.profile) ||
+      !Array.isArray(value.operations) || !Array.isArray(value.initialStatusExpectations) ||
+      !Array.isArray(value.warnings) || !Array.isArray(value.blockedResources)) return false;
+  return value.phase === "plan" && value.resourceScope === "managed-labels" &&
+    typeof value.requestFingerprint === "string" && value.requestFingerprint.length > 0 &&
+    typeof value.inspectionFingerprint === "string" && value.inspectionFingerprint.length > 0 &&
+    typeof value.planFingerprint === "string" && value.planFingerprint.length > 0 &&
+    value.initialStatusExpectations.length === 0 && value.operations.every(validOperation) &&
+    new Set(value.operations.map(operation => operation.id)).size === value.operations.length &&
+    (value.outcome === "blocked" || value.outcome === "no-change" && value.operations.length === 0 && value.blockedResources.length === 0 ||
+      value.outcome === "ready" && value.operations.length > 0);
+}
+
+function validApplyShape(value: unknown): value is ApplyReport {
+  if (!record(value) || !Array.isArray(value.operations) || !Array.isArray(value.safeDiagnostics)) return false;
+  return value.phase === "apply" && value.resourceScope === "managed-labels" &&
+    typeof value.planFingerprint === "string" && typeof value.preflightInspectionFingerprint === "string" &&
+    ["applied", "no-change", "blocked", "partial-failure", "failed"].includes(String(value.outcome)) &&
+    value.operations.every(entry => record(entry) && validOperation(entry.operation) &&
+      ["applied", "already-conforming", "blocked", "failed", "not-attempted"].includes(String(entry.outcome)) &&
+      Array.isArray(entry.safeDiagnostics));
+}
+
 function sameRequest(request: ReconciliationRequest, plan: ReconciliationPlan): boolean {
-  return plan.phase === "plan" && plan.resourceScope === "managed-labels" &&
-    typeof plan.inspectionFingerprint === "string" && plan.inspectionFingerprint.length > 0 &&
+  return validPlanShape(plan) &&
     fingerprint(request) === plan.requestFingerprint &&
     fingerprint(request.target) === fingerprint(plan.target) &&
     fingerprint(request.profile) === fingerprint(plan.profile) &&
@@ -43,12 +84,13 @@ export function plan(request: ReconciliationRequest, inspection: InspectionRepor
 }
 
 export async function apply(port: GitHubPort, request: ReconciliationRequest, planned: ReconciliationPlan): Promise<ApplyReport> {
+  const wellFormed = validPlanShape(planned);
   const report: ApplyReport = {
-    phase: "apply", resourceScope: "managed-labels", planFingerprint: planned.planFingerprint,
-    preflightInspectionFingerprint: "", operations: planned.operations.map(operation => ({ operation, outcome: "not-attempted", safeDiagnostics: [] })),
+    phase: "apply", resourceScope: "managed-labels", planFingerprint: wellFormed ? planned.planFingerprint : "",
+    preflightInspectionFingerprint: "", operations: wellFormed ? planned.operations.map(operation => ({ operation, outcome: "not-attempted", safeDiagnostics: [] })) : [],
     outcome: "blocked", safeDiagnostics: [],
   };
-  if (!sameRequest(request, planned) || planned.outcome === "blocked" || planned.initialStatusExpectations.length) {
+  if (!wellFormed || !sameRequest(request, planned) || planned.outcome === "blocked") {
     report.safeDiagnostics.push("Invalid, blocked, or mismatched plan");
     return report;
   }
@@ -110,6 +152,10 @@ export async function verify(port: GitHubPort, request: ReconciliationRequest, p
     phase: "verify", resourceScope: "managed-labels", target: request.target, profile: request.profile,
     verifiedAt: new Date().toISOString(), resources: [], outcome: "unverifiable", safeDiagnostics: [],
   };
+  if (!validPlanShape(planned) || !validApplyShape(applied)) {
+    report.safeDiagnostics.push("Plan or Apply report is incomplete or malformed");
+    return report;
+  }
   const validOutcomes = planned.outcome === "no-change" ?
     planned.operations.length === 0 && applied.outcome === "no-change" && applied.operations.length === 0 :
     planned.outcome === "ready" ? planned.operations.length > 0 &&
