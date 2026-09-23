@@ -48,8 +48,10 @@ parent coordination. Distinguish Ready, active, Review/rework, blocked,
 needs-decision, Discovery/future, and terminal work. Repair missing required
 Project membership under the existing Core Profile rules; do not guess a Status.
 
-Select only work that is authorized, has no unsatisfied real prerequisite or
-unresolved blocking decision, and fits current sequencing and release scope.
+Select only work that is authorized, has no unsatisfied real prerequisite,
+unresolved external `blocked` condition, or blocking decision, and fits current
+sequencing and release scope. A Ready or In Progress Issue with an unresolved
+external blocker is not actionable even without a native Issue Dependency.
 Prefer continuing applicable active or review work before starting unrelated
 Ready work. Re-scan after each merge, decision, or terminal outcome. For this
 repository's current dogfooding sequence, the recorded direction is #22 → #21 →

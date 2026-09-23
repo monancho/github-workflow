@@ -144,13 +144,16 @@ Other findings retain their native handling:
 | Security-sensitive finding | Stop affected work and use the repository's private reporting path; do not expose sensitive details publicly. |
 
 Select the next work item only after confirming its execution authority, real
-prerequisites, absence of an unresolved blocking decision, and compatibility
-with current sequencing and milestone/release scope. Prefer finishing applicable
-In Progress or Review/rework work before starting unrelated Ready work, unless
-an explicit policy or blocker explains another choice. Backlog or Discovery
-classification does not make independent implementation actionable. Re-scan
-GitHub after a merge, decision, or other terminal outcome because the queue may
-have changed.
+prerequisites, absence of an unresolved external blocker or blocking decision,
+and compatibility with current sequencing and milestone/release scope. An Issue
+with an unresolved external condition recorded by `blocked` is not actionable
+even if it is Ready or In Progress and has no native Issue Dependency. Record
+resolution and clear the condition label before selecting it. Prefer finishing
+applicable In Progress or Review/rework work before starting unrelated Ready
+work, unless an explicit policy or blocker explains another choice. Backlog or
+Discovery classification does not make independent implementation actionable.
+Re-scan GitHub after a merge, decision, or other terminal outcome because the
+queue may have changed.
 
 Read relevant comments when starting or resuming work, and record material plan
 changes, decisions, blocker resolutions, and review findings durably in GitHub.
