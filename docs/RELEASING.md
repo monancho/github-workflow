@@ -21,13 +21,14 @@ No alpha, beta, or release-candidate tag is required by default.
 ## Before requesting release authority
 
 1. Complete [#36](https://github.com/monancho/github-workflow/issues/36):
-   reconcile the pilot's direct Issue-to-Project membership with its forward
-   Project item list, record the final outcome, and update this guide
-   and the [README](../README.md) if the evidence changes the release wording.
-   Its 2026-09-23 22:47 UTC checkpoint passed the live CLI, lifecycle, installed
-   tarball, idempotency, recovery, and unrelated-state preservation exercises,
-   but the pilot Project list still omitted an active item during a GitHub
-   Projects indexing incident. That checkpoint is partial release evidence.
+   reconcile direct Issue-to-Project membership with the forward Project item
+   lists in both live test repositories, record the final outcome, and update
+   this guide and the [README](../README.md) if the evidence changes the release
+   wording. Its 2026-09-23 22:55 UTC checkpoint passed clean-target provisioning,
+   reuse/preservation, live CLI, lifecycle, installed tarball, idempotency, and
+   recovery exercises on direct/native readback. The preseeded pilot and clean
+   fixture Project lists still omitted active items during a GitHub Projects
+   indexing incident. That checkpoint is partial release evidence.
 2. Complete [#37](https://github.com/monancho/github-workflow/issues/37)
    with accurate public documentation, then the independent
    [SC-001–SC-012 audit in #38](https://github.com/monancho/github-workflow/issues/38).
