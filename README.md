@@ -1,10 +1,10 @@
 # github-workflow
 
-> Status: Planning / Experimental
+> Status: Pre-release validation. `v0.1.0` has not been published.
 
 `github-workflow` is a GitHub-native, agent-neutral software delivery workflow for humans and AI agents working under the same durable work contract.
 
-The project is implementing its first release. The provisioning CLI covers the managed GitHub Core Profile; runtime distribution and release validation remain in progress.
+The provisioning CLI implements the managed GitHub Core Profile. The first release is being validated; the pilot's GitHub Projects list readback is still tracked in [#36](https://github.com/monancho/github-workflow/issues/36). This project supplies a workflow contract and a provisioning tool, not a hosted task database or a service required to keep a repository running.
 
 ## Principles
 
@@ -19,13 +19,13 @@ The project is implementing its first release. The provisioning CLI covers the m
 
 ## Intended scope
 
-The project is being designed around three layers:
+The project has three layers:
 
 1. **Core Workflow Contract** — shared work, lifecycle, authority, verification, and completion semantics.
 2. **GitHub Core Profile** — a minimal mapping of that contract onto native GitHub capabilities.
 3. **Provisioning Capability** — inspect, plan, apply, and verify the managed GitHub state.
 
-The initial target environment is a public repository owned by a personal GitHub account.
+The v0.1.0 target is a public GitHub.com repository owned by a personal account, using GitHub Free capabilities. Organization-owned or private repositories, GitHub Enterprise Server, cross-owner Projects, and shared multi-repository Projects are outside the verified target. See the [requirements baseline](https://github.com/monancho/github-workflow/blob/main/docs/REQUIREMENTS.md) for the full support boundary.
 
 ## Current status
 
@@ -35,16 +35,17 @@ The initial target environment is a public repository owned by a personal GitHub
 - GitHub capability scope: completed
 - Release policy: completed
 - Bootstrap plan: completed
-- Implementation: Core Profile reconciliation and the local CLI contract implemented; runtime distribution and release validation pending
+- Implementation: Core Profile reconciliation, local CLI contract, and Node.js 22/24 tarball portability checks completed
+- Release validation: repository self-dogfooding and a separate public pilot exercised; the pilot's GitHub Projects forward-list readback remains pending in [#36](https://github.com/monancho/github-workflow/issues/36)
 - First public release target: `v0.1.0`
 
-Detailed requirements and specifications are added through the repository's formal Issue → branch → Pull Request workflow.
+The [workflow specification](https://github.com/monancho/github-workflow/blob/main/docs/WORKFLOW_SPEC.md) defines tracked Issues, Project Status, Sub-Issues, dependencies, linked PRs, independent Review/QA, and separate merge authority. An Issue holds canonical work state; a PR records its change and integration. The Project Status lifecycle is `Backlog → Ready → In Progress → Review → Done`, with backward movement for rework and Review when applicable. `Done` alone does not prove acceptance; a successful Issue closes as `Completed`. The [`blocked` and `needs-decision` labels](https://github.com/monancho/github-workflow/blob/main/docs/WORKFLOW_SPEC.md#3-lifecycle-and-conditions) record conditions, not lifecycle phases.
 
 ## Core Profile provisioning
 
-This local TypeScript CLI reconciles repository Issues availability, a same-owner Dedicated User Project and its Status values, the `needs-decision` and `blocked` labels, and Project membership/lifecycle effects for explicitly selected tracked Issues. Every JSON result has `schemaVersion: 1` and `resourceScope: "core-profile"`. A `verified` result covers the selected Issues in that run; it does not silently discover every tracked Issue in a repository. Existing labels are reused by name. Colors and descriptions are defaults for newly created labels and are not enforced on existing labels.
+This local TypeScript CLI reconciles repository Issues availability, a same-owner Dedicated User Project and its Status values, the `needs-decision` and `blocked` labels, and Project membership/lifecycle effects for explicitly selected tracked Issues. It preserves unrelated labels, Projects, and repository configuration; it does not repurpose an arbitrary existing Project. Every JSON result has `schemaVersion: 1` and `resourceScope: "core-profile"`. A `verified` result covers the selected Issues in that run; it does not silently discover every tracked Issue in a repository. Existing labels are reused by name. Colors and descriptions are defaults for newly created labels and are not enforced on existing labels.
 
-Use Node.js 22 or 24 LTS. The [distribution and runtime guide](docs/DISTRIBUTION.md) describes the v0.1.0 npm tarball and cross-platform checks. For a source checkout, install and build with `npm ci` and `npm run build`. The commands below use the compiled CLI. `plan` performs a read-only inspection and prints the proposed operations; `apply` accepts that saved plan, then `verify` accepts both saved artifacts and performs a fresh read. Supply `GH_TOKEN` or `GITHUB_TOKEN` with the applicable repository and User Project permissions. GraphQL Project inspection also requires authentication for read-only commands.
+Use Node.js 22 or 24 LTS. The [distribution and runtime guide](docs/DISTRIBUTION.md) describes tarball installation and platform checks; there is no published v0.1.0 Release yet. For a source checkout, install and build with `npm ci` and `npm run build`. The commands below use the compiled CLI. `inspect` reads current managed state; `plan` performs a read-only inspection and prints proposed operations; `apply` accepts that saved plan, then `verify` accepts both saved artifacts and performs a fresh read. Supply `GH_TOKEN` or `GITHUB_TOKEN` with the applicable repository and User Project permissions. GraphQL Project inspection also requires authentication for read-only commands.
 
 ```text
 node dist/src/cli.js inspect --owner OWNER --repo REPO --profile v0.1.0-core-profile --issues issues.json
@@ -75,6 +76,10 @@ Run `npm test` for deterministic reconciliation and CLI contract tests.
 ## Security
 
 Please see [SECURITY.md](SECURITY.md). Do not disclose suspected vulnerabilities in a public issue.
+
+## Contributing
+
+See [CONTRIBUTING.md](https://github.com/monancho/github-workflow/blob/main/CONTRIBUTING.md) for the repository's Issue, PR, review, and authority process. Maintainers can use the [release guide](https://github.com/monancho/github-workflow/blob/main/docs/RELEASING.md) when preparing `v0.1.0`.
 
 ## License
 
