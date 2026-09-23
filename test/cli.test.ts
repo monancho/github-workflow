@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { CLI_VERSION, CliInputError, exitCodeFor, parseCliArgs, renderText } from "../src/cli/contract.js";
+import { CLI_VERSION, CliInputError, exitCodeFor, parseCliArgs, renderText, supportedNodeVersion } from "../src/cli/contract.js";
 
 const cliPath = fileURLToPath(new URL("../src/cli.js", import.meta.url));
 const preloadUrl = new URL("../../test/fixtures/static-fetch.mjs", import.meta.url).href;
@@ -27,6 +27,10 @@ function run(args: string[], mode = "conforming"): Promise<{ code: number | null
 }
 
 test("CLI argument contract and exit codes are explicit", () => {
+  assert.equal(supportedNodeVersion("22.23.2"), true);
+  assert.equal(supportedNodeVersion("v24.13.1"), true);
+  assert.equal(supportedNodeVersion("20.20.2"), false);
+  assert.equal(supportedNodeVersion("26.10.0"), false);
   assert.equal(parseCliArgs(["--help"]).action, "help");
   assert.equal(parseCliArgs(["--version"]).action, "version");
   const parsed = parseCliArgs(["verify", ...common, "--plan", "plan.json", "--apply-report", "apply.json", "--format", "text"]);

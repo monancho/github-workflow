@@ -19,12 +19,17 @@ export type CliFailure = {
   schemaVersion: 1;
   phase: "cli";
   resourceScope: "core-profile";
-  outcome: "invalid-input" | "failed";
+  outcome: "invalid-input" | "unsupported" | "failed";
   safeDiagnostics: string[];
 };
 
 export class CliInputError extends Error {
   constructor(message: string) { super(message); }
+}
+
+export function supportedNodeVersion(version: string): boolean {
+  const major = Number(/^v?(\d+)\./.exec(version)?.[1]);
+  return major === 22 || major === 24;
 }
 
 export const HELP = `github-workflow ${CLI_VERSION}
