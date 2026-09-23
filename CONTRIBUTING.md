@@ -119,6 +119,29 @@ GitHub, not accumulated worktrees, remains the durable work queue. Worktree
 topology is this repository's execution technique, not a public Core Profile
 requirement or a Sub-Issue relationship.
 
+## Branch and merge conventions
+
+Name new short-lived work branches `issue-<number>-<slug>`. Keep normal in-scope
+review corrections on the same branch and Pull Request until integration or a
+terminal non-completion outcome. Child commits may show useful implementation and
+review steps; they do not need to encode canonical Issue or Project state.
+
+Use squash merge by default for one accepted Pull Request to become one durable
+`main` commit. Make the Pull Request title a concise description of the accepted
+change and use it as the squash commit subject, overriding GitHub's proposed
+subject when needed. Record a reason in the Pull Request when another merge
+method better preserves meaningful history.
+Review and Merge Authority requirements in this document still govern every
+merge method.
+
+Delete a merged remote head branch after confirming its Pull Request is merged.
+Prefer GitHub's native automatic head-branch deletion when enabled; otherwise
+delete the branch explicitly. Before deleting an older remote branch, confirm its
+current head still matches the head of a merged Pull Request and that no open
+Pull Request uses it. Keep open and rework Pull Request branches available. After
+merge or terminal non-completion, check for uncommitted work, then remove the
+finished local worktree and local branch.
+
 “Ready for a PR” is not executor completion when a repository change is
 required. The linked, review-ready Pull Request must exist.
 
