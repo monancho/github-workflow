@@ -32,9 +32,14 @@ No alpha, beta, or release-candidate tag is required by default.
    consistency during final release QA if that incident remains open.
 2. Complete [#37](https://github.com/monancho/github-workflow/issues/37)
    with accurate pre-release documentation, then the independent
-   [SC-001–SC-012 audit in #38](https://github.com/monancho/github-workflow/issues/38).
-   Resolve any failed criterion or record an explicitly authorized exception;
-   do not infer readiness from a merged PR or a `Done` Project Status alone.
+   [audit in #38](https://github.com/monancho/github-workflow/issues/38).
+   SC-001–SC-011 must pass before release authorization; audit SC-012's
+   authority, execution, tag/artifact/publication, and post-publication
+   verification plan as ready but pending. SC-012 passes only after #39's
+   separately approved tag and GitHub Release are published and verified.
+   Resolve any failed pre-authorization criterion or record an explicitly
+   authorized exception; do not infer readiness from a merged PR or a `Done`
+   Project Status alone.
 3. As part of [#39](https://github.com/monancho/github-workflow/issues/39),
    prepare and independently review the final release-facing documentation
    before choosing a candidate commit or creating a tag. In particular, replace
