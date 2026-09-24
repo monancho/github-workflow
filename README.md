@@ -4,7 +4,7 @@
 
 `github-workflow` is a GitHub-native, agent-neutral software delivery workflow for humans and AI agents working under the same durable work contract.
 
-The provisioning CLI implements the managed GitHub Core Profile. The first release is being validated; GitHub Projects list readback for the pilot repositories is still tracked in [#36](https://github.com/monancho/github-workflow/issues/36). This project supplies a workflow contract and a provisioning tool, not a hosted task database or a service required to keep a repository running.
+The provisioning CLI implements the managed GitHub Core Profile. [#36](https://github.com/monancho/github-workflow/issues/36#issuecomment-5806730906) completed repository self-dogfooding and clean and preseeded public pilot validation, including agreement between the original Project items' direct reads and forward lists. The #38 readiness audit and #39 human release decision remain. This project supplies a workflow contract and a provisioning tool, not a hosted task database or a service required to keep a repository running.
 
 ## Principles
 
@@ -36,7 +36,7 @@ The v0.1.0 target is a public GitHub.com repository owned by a personal account,
 - Release policy: completed
 - Bootstrap plan: completed
 - Implementation: Core Profile reconciliation, local CLI contract, and Node.js 22/24 tarball portability checks completed
-- Release validation: repository self-dogfooding plus clean and preseeded public test repositories exercised; direct Project item reads verified, but their forward-list readback remains pending in [#36](https://github.com/monancho/github-workflow/issues/36)
+- Release validation: #36 self-dogfooding and clean and preseeded public pilot checks completed; original Project items agree in direct and forward-list reads; #38 readiness audit and #39 human release decision remain
 - First public release target: `v0.1.0`
 
 The [workflow specification](https://github.com/monancho/github-workflow/blob/main/docs/WORKFLOW_SPEC.md) defines tracked Issues, Project Status, Sub-Issues, dependencies, linked PRs, independent Review/QA, and separate merge authority. An Issue holds canonical work state; a PR records its change and integration. The Project Status lifecycle is `Backlog → Ready → In Progress → Review → Done`, with backward movement for rework and Review when applicable. `Done` alone does not prove acceptance; a successful Issue closes as `Completed`. The [`blocked` and `needs-decision` labels](https://github.com/monancho/github-workflow/blob/main/docs/WORKFLOW_SPEC.md#3-lifecycle-and-conditions) record conditions, not lifecycle phases.
