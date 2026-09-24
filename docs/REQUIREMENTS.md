@@ -267,9 +267,13 @@ projects are not part of the verified v0.1.0 support claim.
 
 ## 12. v0.1.0 success criteria
 
-All criteria in this section must be satisfied before release authorization. A
-criterion may be demonstrated by automated checks, reproducible manual evidence,
-or both.
+SC-001–SC-011 must be satisfied before release authorization. Before that
+decision, SC-012's execution and authority path, tag/artifact/publication plan,
+and post-publication verification plan must be audited as ready but pending;
+SC-012 is not yet passed. SC-012 is completed and verified through #39 only after
+explicit release approval, creation and push of the approved tag, GitHub Release
+publication, and post-publication verification. A criterion may be demonstrated
+by automated checks, reproducible manual evidence, or both.
 
 | ID | Release criterion | Principal requirements | Minimum evidence |
 | --- | --- | --- | --- |
