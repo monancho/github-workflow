@@ -49,6 +49,61 @@ semantics, and a Sub-Issue is never a one-to-one assignment to an agent.
 Use an Issue Dependency only when one tracked work item genuinely blocks another.
 Do not use it for relatedness, ordinary sequencing, or artificial serialization.
 
+### Context before tracked work
+
+An idea need not become an Issue merely to avoid losing it. The Core Profile
+begins with tracked Issues; the surfaces below help people clarify context
+before the intake decision in Section 5. They are optional, and none grants
+execution authority or replaces the Issue, Project, or canonical documents.
+
+| Surface | Role before or after promotion |
+| --- | --- |
+| Chat | Immediate questions and exploration. A session transcript is not durable repository authority. |
+| Maintainer notes, including Notion | Korean explanation, comparison, and cross-repository context for the maintainer. Link to the relevant GitHub record when the topic becomes repository work; do not maintain a second work-state ledger. |
+| GitHub Discussion, when enabled | Repository-facing, unresolved conversation or a question that merits a durable link but has no bounded execution or decision task yet. It is not a Project lifecycle item. |
+| Project Draft Issue, when deliberately used | A short planning candidate with likely work intent but incomplete scope or acceptance. It exists only inside its Project and is not a repository Issue. |
+| Tracked Issue, including Discovery | The canonical contract for independently tracked execution or bounded decision work, with the applicable Dedicated User Project lifecycle. |
+| Linked PR | The proposed repository change, Review/QA, and integration record for authorized work. |
+| Canonical docs, specifications, or ADR | Durable repository authority after the applicable review and integration, rather than an unpromoted chat or discussion conclusion. |
+
+Promotion is based on readiness, not a mandatory chain. Preserve exploratory
+repository context in an optional Discussion when another session or collaborator
+will need it and the question is still open. A Project Draft Issue may capture
+probable work if a maintainer has deliberately provided a separate planning
+Project; it is not required, is not a tracked Issue, and does not belong in the
+Core Profile's Dedicated User Project as a substitute for authorized work.
+[GitHub's Draft Issues](https://docs.github.com/en/issues/planning-and-tracking-with-projects/managing-items-in-your-project/adding-items-to-your-project#creating-draft-issues)
+have no repository, labels, or milestone until converted to an Issue. Do not
+infer that a Draft Issue has been adopted or used in a particular repository.
+
+Create a normal tracked Issue only when the objective, reason, bounded scope,
+completion conditions, prerequisites, and authority envelope can be recorded.
+When an independent decision about value, scope, or placement is itself defined
+work, use a Discovery Issue under FR-042 instead of leaving executable decision
+work in a Discussion or Draft Issue. A Discussion or Draft Issue can be skipped;
+creation or conversion to an Issue never authorizes implementation by itself.
+After conversion, establish required Dedicated User Project membership and the
+actual Status under the existing Core Profile rules. Any separate planning
+Project remains non-canonical for that Issue's lifecycle.
+
+An authorized conclusion with lasting repository effect belongs in the
+appropriate canonical document. Use the normal Issue/PR/Review and authority
+path when the documentation change has independent tracking value or affects
+the public contract; the existing tiny PR-only path applies only when it truly
+has no independent work contract. Link the source Discussion or note and record
+the decision concisely instead of copying a full conversation into several
+systems.
+
+For a non-executable Discussion, record one concise outcome and supporting link:
+**Adopted/promoted** (linked Issue or document), **Deferred** (why and what
+would reopen it), **Rejected** (reason), **Superseded** (successor), or
+**Informational/answered** (conclusion). Close a concluded Discussion when
+appropriate; these are narrative outcomes, not Project Status values or new
+Core Profile labels. An unresolved authority question remains open and states
+the exact decision needed. If it blocks a tracked Issue, record the question on
+that Issue and use its existing `needs-decision` condition. Security-sensitive
+information follows the private reporting path, not a public Discussion.
+
 ### Repository work inspection
 
 Before selecting work, inspect the repository's durable GitHub state, not only a
