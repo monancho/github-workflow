@@ -2,6 +2,12 @@
 
 <!-- Link the tracked Issue. Use `Closes #number` only when this PR satisfies that Issue's completion conditions. -->
 
+## 한국어 요약
+
+<!-- Briefly summarize the change, current review/verification state, and any blocker for the maintainer in Korean. The English sections below remain canonical. -->
+
+<!-- If human Merge Authority is needed, add "## 사용자 결정 필요" here and state the exact integration decision, current state, and effect of approval or deferral in Korean. Remove this prompt otherwise. -->
+
 ## Change
 
 <!-- Summarize the behavior or documentation changed, and why. -->
