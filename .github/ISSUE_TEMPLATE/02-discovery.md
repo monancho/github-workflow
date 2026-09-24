@@ -3,6 +3,12 @@ name: Discovery
 about: Resolve uncertain value, scope, or placement before implementation
 ---
 
+## 한국어 요약
+
+<!-- Briefly summarize the question, uncertainty, expected decision or completion condition, and any blocker for the maintainer in Korean. The English sections below remain canonical. -->
+
+<!-- If a human decision is needed, add "## 사용자 결정 필요" here and state the exact decision, current state, and effect of approval or deferral in Korean. Remove this prompt otherwise. -->
+
 ## Question
 
 <!-- What decision is this investigation expected to answer? -->

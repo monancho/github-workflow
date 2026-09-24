@@ -39,6 +39,25 @@ resources. On completion, promote durable information to the appropriate
 canonical document, specification, ADR, or Pull Request evidence; transient
 working context may be removed.
 
+## Language of durable records
+
+Write canonical repository documentation and detailed GitHub Issue, Pull Request,
+review, and decision records in English. Keep Issue titles in English. For active,
+release-relevant, decision-relevant, or otherwise important Issue bodies, add a
+short `## 한국어 요약` near the top so the maintainer can see the objective, scope,
+current state or completion condition, and any blocker or decision. Keep the
+English detail and evidence intact.
+
+Prepend a concise Korean summary to material Issue comments about plans,
+Review/QA, blockers or recovery, human decisions, Discovery outcomes, merge or
+completion, and major scope or sequencing changes. A decision request should
+state the exact choice under `## 사용자 결정 필요`, with the current state and the
+effect of approval or deferral. Summaries orient readers; they do not create a
+second canonical state store or change lifecycle or authority. If the languages
+conflict, use the English contract and evidence until the discrepancy is fixed.
+Raw logs, API payloads, repetitive checkpoints, and low-value execution detail
+do not need Korean duplication.
+
 ## Repository work intake and queue
 
 For a repository-level request, inspect durable GitHub state before selecting an
