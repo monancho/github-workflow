@@ -39,6 +39,57 @@ resources. On completion, promote durable information to the appropriate
 canonical document, specification, ADR, or Pull Request evidence; transient
 working context may be removed.
 
+## Context before a tracked Issue
+
+The [workflow specification](docs/WORKFLOW_SPEC.md#context-before-tracked-work)
+defines the optional Chat, maintainer-note, Discussion, and Project Draft Issue
+surfaces. They help preserve useful context without making every idea a Backlog
+item. GitHub remains the durable ledger once work becomes independently tracked;
+Notion or another maintainer note may explain a decision in Korean, but the
+authorizing Issue, Project state, PR, and canonical docs remain authoritative.
+When information crosses surfaces, link the source and carry over a short
+decision summary rather than duplicating entire conversations or agent logs.
+
+Before recording newly encountered context, an agent or human should decide:
+
+1. Is it a detail of current authorized work? Record it on that Issue or PR and
+   handle it within the existing envelope.
+2. Is it a repository-relevant question worth preserving for another session or
+   collaborator, without bounded decision or implementation work yet? Use a
+   Discussion when enabled, or a maintainer-controlled note when it is not.
+   Do not enable Discussions or publish private/security details as a side
+   effect of intake.
+3. Is there a likely work candidate whose scope or acceptance is incomplete?
+   A Project Draft Issue is an optional planning note only if a maintainer has
+   deliberately chosen a separate planning Project and there is no bounded
+   decision task yet. Otherwise retain the Discussion/note until it can become
+   a bounded Discovery or normal Issue.
+4. Is there independently trackable work with a clear contract, or a bounded
+   decision about uncertain value, scope, or placement? Create the normal or
+   Discovery Issue respectively under the existing intake and authority rules
+   below. State objective, reason, scope, completion conditions, prerequisites,
+   and authority; add required Dedicated User Project membership. A Draft Issue
+   conversion or new Issue records work but does not authorize execution.
+
+The Dedicated User Project holds tracked-Issue lifecycle state. Discussions
+are not its work items, and Draft Issues must not stand in for tracked Issues
+there. A separate planning Project, if one is ever authorized, is outside the
+managed Core Profile and supplies no canonical Status for converted Issues.
+Do not create such a Project merely to make the optional path available.
+
+If [repository Discussions](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/enabling-or-disabling-github-discussions-for-a-repository)
+are separately enabled, prefer a small set of purposes: `Ideas` (open-ended),
+`Design & Decisions` (open-ended), and `Q&A` (answerable). Reuse suitable default
+or existing categories; do not create or remove categories merely to match these
+names. This is optional guidance, not required Core Profile configuration.
+A Discussion asking
+for human judgment should state the exact choice and consequences in its text;
+`needs-decision` remains the condition on a tracked Issue when that Issue is
+blocked. Summarize the adopted, deferred, rejected, superseded, or informational
+outcome with a link and close a concluded Discussion when appropriate. Promote
+lasting decisions into canonical docs through the applicable Review and
+authority path; a Discussion alone cannot change the repository contract.
+
 ## Language of durable records
 
 Write canonical repository documentation and detailed GitHub Issue, Pull Request,
