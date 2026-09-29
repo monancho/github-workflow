@@ -1,70 +1,79 @@
 # github-workflow
 
-> v0.1.0 documentation. Check [GitHub Releases](https://github.com/monancho/github-workflow/releases) for publication status and installable assets.
+**A GitHub-native work contract and setup tool for humans and AI agents.** Keep work in Issues, a dedicated Project, and pull requests so another person or agent can understand what is authorized, what is blocked, and what has been verified. The local CLI sets up and checks the v0.1.0 GitHub Core Profile; normal work continues in GitHub without a hosted service or a running `github-workflow` process.
 
-`github-workflow` is a GitHub-native, agent-neutral software delivery workflow for humans and AI agents working under the same durable work contract.
+The v0.1.0 installable package is distributed as a GitHub Release asset. Check [Releases](https://github.com/monancho/github-workflow/releases) for its publication status and the `github-workflow-0.1.0.tgz` asset.
 
-The provisioning CLI implements the managed GitHub Core Profile. [#36](https://github.com/monancho/github-workflow/issues/36#issuecomment-5806730906) completed repository self-dogfooding and clean and preseeded public pilot validation, including agreement between the original Project items' direct reads and forward lists. [#38](https://github.com/monancho/github-workflow/issues/38#issuecomment-5882214627) completed the pre-release readiness audit; [#39](https://github.com/monancho/github-workflow/issues/39) governs the separate human release decision and publication verification. This project supplies a workflow contract and a provisioning tool, not a hosted task database or a service required to keep a repository running.
+## What it provides
 
-## Principles
+- **A shared workflow contract:** tracked Issues hold scope and authority; native Sub-Issues and dependencies express related work; a Dedicated User Project tracks `Backlog`, `Ready`, `In Progress`, `Review`, and `Done`; linked PRs carry changes, independent Review/QA, and integration evidence.
+- **Core Profile provisioning:** `inspect`, `plan`, `apply`, and `verify` reconcile Issues availability, a same-owner Dedicated User Project and its Status values, the `needs-decision` and `blocked` labels, and Project membership and lifecycle effects for the tracked Issues you select.
+- **Safe, observable changes:** Plan reads state without changing it. Apply checks that relevant managed state still matches the saved plan before making changes. Verify reads GitHub again. Compatible native state is reused, unrelated configuration is preserved, and a conforming repeat run plans no changes.
 
-- GitHub-native first
-- Agent-neutral
-- Existing-first
-- Standards-backed
-- Repository-independent
-- Small batches
-- Continuous verification
-- Documentation evolves with implementation
+The CLI is a provisioning tool, not an agent runner or an ongoing synchronizer. It does not select work, approve changes, merge PRs, or grant release authority.
 
-## Intended scope
+## Requirements and installation
 
-The project has three layers:
+The verified v0.1.0 target is a **public GitHub.com repository owned by a personal account**, using GitHub Free capabilities and a Dedicated User Project owned by that same account. The CLI is verified on **Node.js 22 and 24**; portability checks cover Ubuntu 24.04, Windows 2025, and macOS 15 on both majors. You need a GitHub credential with access to the target repository and User Project for the operation you run. Set `GH_TOKEN` or `GITHUB_TOKEN` in your environment before using the CLI; even read-only Project inspection requires authentication. Do not put tokens in an Issue selection file or commit them.
 
-1. **Core Workflow Contract** — shared work, lifecycle, authority, verification, and completion semantics.
-2. **GitHub Core Profile** — a minimal mapping of that contract onto native GitHub capabilities.
-3. **Provisioning Capability** — inspect, plan, apply, and verify the managed GitHub state.
-
-The v0.1.0 target is a public GitHub.com repository owned by a personal account, using GitHub Free capabilities. Organization-owned or private repositories, GitHub Enterprise Server, cross-owner Projects, and shared multi-repository Projects are outside the verified target. See the [requirements baseline](https://github.com/monancho/github-workflow/blob/main/docs/REQUIREMENTS.md) for the full support boundary.
-
-Jira and Notion are outside the v0.1.0 provisioning runtime. They may provide optional context in future workflows; this package does not integrate with or synchronize them.
-
-## Current status
-
-- Product definition: completed
-- Development process tailoring: completed
-- Formal document model: completed
-- GitHub capability scope: completed
-- Release policy: completed
-- Bootstrap plan: completed
-- Implementation: Core Profile reconciliation, local CLI contract, and Node.js 22/24 tarball portability checks completed
-- Release validation: #36 self-dogfooding and clean and preseeded public pilot checks completed; original Project items agree in direct and forward-list reads
-- Pre-release audit: #38 found SC-001–SC-011 passing and SC-012's release path ready for the separate #39 authority and post-publication verification steps
-- Version: `0.1.0`; check [GitHub Releases](https://github.com/monancho/github-workflow/releases) for the `v0.1.0` tag and installable asset
-
-The [workflow specification](https://github.com/monancho/github-workflow/blob/main/docs/WORKFLOW_SPEC.md) defines tracked Issues, Project Status, Sub-Issues, dependencies, linked PRs, independent Review/QA, and separate merge authority. An Issue holds canonical work state; a PR records its change and integration. The Project Status lifecycle is `Backlog → Ready → In Progress → Review → Done`, with backward movement for rework and Review when applicable. `Done` alone does not prove acceptance; a successful Issue closes as `Completed`. The [`blocked` and `needs-decision` labels](https://github.com/monancho/github-workflow/blob/main/docs/WORKFLOW_SPEC.md#3-lifecycle-and-conditions) record conditions, not lifecycle phases.
-
-## Core Profile provisioning
-
-This local TypeScript CLI reconciles repository Issues availability, a same-owner Dedicated User Project and its Status values, the `needs-decision` and `blocked` labels, and Project membership/lifecycle effects for explicitly selected tracked Issues. It preserves unrelated labels, Projects, and repository configuration; it does not repurpose an arbitrary existing Project. Every JSON result has `schemaVersion: 1` and `resourceScope: "core-profile"`. A `verified` result covers the selected Issues in that run; it does not silently discover every tracked Issue in a repository. Existing labels are reused by name. Colors and descriptions are defaults for newly created labels and are not enforced on existing labels.
-
-Use Node.js 22 or 24 LTS. When the `v0.1.0` GitHub Release asset is available, download `github-workflow-0.1.0.tgz` from [Releases](https://github.com/monancho/github-workflow/releases) and install it with `npm install --global ./github-workflow-0.1.0.tgz`. The installed command is `github-workflow`. The [distribution and runtime guide](docs/DISTRIBUTION.md) describes platform checks. For a source checkout, install and build with `npm ci` and `npm run build`. The commands below use the compiled source CLI; replace `node dist/src/cli.js` with `github-workflow` when using the installed tarball. `inspect` reads current managed state; `plan` performs a read-only inspection and prints proposed operations; `apply` accepts that saved plan, then `verify` accepts both saved artifacts and performs a fresh read. Supply `GH_TOKEN` or `GITHUB_TOKEN` with the applicable repository and User Project permissions. GraphQL Project inspection also requires authentication for read-only commands.
+When the v0.1.0 Release asset is available, download **`github-workflow-0.1.0.tgz`** from [GitHub Releases](https://github.com/monancho/github-workflow/releases), then run from the directory containing the downloaded file:
 
 ```text
-node dist/src/cli.js inspect --owner OWNER --repo REPO --profile v0.1.0-core-profile --issues issues.json
-node dist/src/cli.js plan --owner OWNER --repo REPO --profile v0.1.0-core-profile --issues issues.json > plan.json
-node dist/src/cli.js apply --owner OWNER --repo REPO --profile v0.1.0-core-profile --issues issues.json --plan plan.json > apply.json
-node dist/src/cli.js verify --owner OWNER --repo REPO --profile v0.1.0-core-profile --issues issues.json --plan plan.json --apply-report apply.json
-node dist/src/cli.js plan --owner OWNER --repo REPO --profile v0.1.0-core-profile --issues issues.json --format text
-node dist/src/cli.js --help
-node dist/src/cli.js --version
+npm install --global ./github-workflow-0.1.0.tgz
+github-workflow --version
+github-workflow --help
 ```
 
-The `issues.json` file is an array such as `[{"number":123}]`. An authorized initial Status override uses `{"number":123,"authorizedInitialStatus":{"status":"Ready","authorizationRef":"issue-123-comment"}}`. Use the same selection file for all four phases; omit `--issues` only when intentionally reconciling the repository and Project without asserting Issue membership. Enter the canonical owner and repository spelling. The target must be a public GitHub.com repository owned by a personal account. Saved plans carry result schema version 1, Plan schema version 1, profile version, normalized selected-Issue identity, and the observed-state fingerprint; incompatible plans are blocked before mutation. `apply` stops when the relevant managed state has changed since planning. Read-only GitHub requests use bounded retries for short transient or rate-limit failures; mutations are never retried automatically. A failed, interrupted, or partially applied run may contain a mutation with an uncertain result and should be followed by a new Inspect and Plan. `SIGINT` and `SIGTERM` stop further Apply operations and prevent Verify from claiming success.
+The package is not published to the npm registry. GitHub's automatic source archives are different from the installable npm tarball. See the [distribution guide](docs/DISTRIBUTION.md) for package contents and source-checkout instructions.
 
-The CLI does not prompt. JSON is the default output and must be used for saved Plan and Apply artifacts. `--format text` renders the same structured result for reading. Normal results, including blocked and invalid input results, go to stdout. Only an unexpected failure before a phase result adds a generic message on stderr; raw GitHub error bodies, file contents, and credentials are never printed.
+## Quick start
 
-| Exit code | Meaning |
+Choose a repository and an **existing tracked Issue** whose Project membership you are authorized to reconcile. In a working directory, create `issues.json` with its number (replace `123` with a real Issue number):
+
+```json
+[{"number":123}]
+```
+
+Use the repository owner's exact login and the repository's exact name in place of `OWNER` and `REPO`. Keep the same `issues.json` for every phase. These commands produce JSON by default; the saved Plan and Apply files must remain JSON.
+
+```text
+github-workflow inspect --owner OWNER --repo REPO --profile v0.1.0-core-profile --issues issues.json
+github-workflow plan --owner OWNER --repo REPO --profile v0.1.0-core-profile --issues issues.json --format json > plan.json
+```
+
+**Read `plan.json` before continuing.** A `ready` outcome lists proposed operations; `no-change` means the selected managed state already conforms. If the result is `blocked`, resolve the reported conflict or permission problem and plan again. Running `apply` makes GitHub changes, so proceed only when those operations are authorized for your repository and Issue.
+
+```text
+github-workflow apply --owner OWNER --repo REPO --profile v0.1.0-core-profile --issues issues.json --plan plan.json --format json > apply.json
+github-workflow verify --owner OWNER --repo REPO --profile v0.1.0-core-profile --issues issues.json --plan plan.json --apply-report apply.json
+```
+
+Expect `verified` from Verify before treating the selected Core Profile state as conforming. Its result covers **only the Issues in `issues.json`**, not every tracked Issue in the repository. Omit `--issues` only when you intentionally want repository and Project setup without asserting Issue membership. An authorized initial Status other than `Backlog` can be requested with `{"number":123,"authorizedInitialStatus":{"status":"Ready","authorizationRef":"issue-123-comment"}}`; record the real authorization reference first.
+
+### What each phase does
+
+| Phase | Result |
+| --- | --- |
+| `inspect` | Reads managed, missing, conflicting, and unrelated state without changing GitHub. |
+| `plan` | Makes a read-only inspection and saves proposed operations with the observed-state fingerprint. |
+| `apply` | Checks the saved plan and current managed state, then performs only applicable planned changes. |
+| `verify` | Checks the Plan and Apply artifacts and makes a fresh GitHub read before reporting conformity. |
+
+For a readable view, add `--format text` to a command whose output you are **not** saving as a Plan or Apply artifact. All phase results include `schemaVersion: 1` and `resourceScope: "core-profile"`.
+
+## Working with the resulting Project
+
+Use Issues as the durable record of objective, scope, prerequisites, decisions, and completion. The Project's Status moves through `Backlog → Ready → In Progress → Review → Done`; rework can move it backward. `blocked` and `needs-decision` describe conditions, not extra Status values. A linked PR records the proposed change, independent Review/QA, and merge decision. Execution, merge, and release authority are separate. `Done` alone does not prove acceptance: close a successful Issue as `Completed` after its evidence and reconciliation are recorded.
+
+The CLI manages only the Core Profile objects and the selected Issues' membership and lifecycle effects. It reuses existing compatible labels and Projects, preserves unrelated labels, Projects, and repository settings, and does not repurpose an arbitrary Project. Existing label colors and descriptions are not rewritten to match defaults. It does not silently discover every tracked Issue; add missing selected Issues through an authorized reconciliation or native GitHub workflow. See the [workflow specification](https://github.com/monancho/github-workflow/blob/main/docs/WORKFLOW_SPEC.md) for the full lifecycle and authority rules.
+
+## Failures and recovery
+
+If Apply reports a stale or blocked plan, inspect the current state and create a **new** Plan; do not edit a saved Plan to bypass the check. After an interrupted or partially failed Apply, a mutation result may be uncertain. Inspect GitHub, plan from the observed state, and run Apply and Verify again as authorized. Mutations are not retried automatically. A failed or incomplete Verify is not success.
+
+The CLI does not prompt. Normal structured results go to stdout; unexpected failures before a phase result also add a generic stderr message. Results avoid credentials and raw GitHub error bodies. Exit codes are:
+
+| Code | Meaning |
 | --- | --- |
 | `0` | `inspected`, `ready`, `no-change`, `applied`, or `verified` |
 | `2` | `invalid-input` |
@@ -74,16 +83,17 @@ The CLI does not prompt. JSON is the default output and must be used for saved P
 | `6` | `partial-failure` or `interrupted` |
 | `7` | `failed` or an unexpected failure |
 
-Run `npm test` for deterministic reconciliation and CLI contract tests.
+## Scope and further reading
 
-## Security
+Organization-owned or private repositories, GitHub Enterprise Server, cross-owner Projects, shared multi-repository Projects, and other Node.js majors are outside the verified v0.1.0 support claim. Jira and Notion may provide optional context in future workflows; v0.1.0 does not integrate with or synchronize them.
 
-Please see [SECURITY.md](SECURITY.md). Do not disclose suspected vulnerabilities in a public issue.
+| Document | Use it for |
+| --- | --- |
+| [Workflow specification](https://github.com/monancho/github-workflow/blob/main/docs/WORKFLOW_SPEC.md) | Issue lifecycle, Project contract, authority, and completion. |
+| [Requirements](https://github.com/monancho/github-workflow/blob/main/docs/REQUIREMENTS.md) | Normative v0.1.0 requirements and support boundary. |
+| [Distribution guide](docs/DISTRIBUTION.md) | Tarball installation, platform checks, and runtime behavior. |
+| [Security policy](SECURITY.md) | Supported versions and private vulnerability reporting. |
+| [Contributing](https://github.com/monancho/github-workflow/blob/main/CONTRIBUTING.md) | Repository execution, PR Review/QA, and merge authority. |
+| [Release guide](https://github.com/monancho/github-workflow/blob/main/docs/RELEASING.md) | Maintainer release gates and publication steps. |
 
-## Contributing
-
-See [CONTRIBUTING.md](https://github.com/monancho/github-workflow/blob/main/CONTRIBUTING.md) for the repository's Issue, PR, review, and authority process. Maintainers can use the [release guide](https://github.com/monancho/github-workflow/blob/main/docs/RELEASING.md) when preparing `v0.1.0`.
-
-## License
-
-MIT. See [LICENSE](LICENSE).
+Licensed under [MIT](LICENSE). Report suspected vulnerabilities through the private path in the [security policy](SECURITY.md), not a public Issue or Discussion.
