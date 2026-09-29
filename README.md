@@ -6,7 +6,7 @@ The v0.1.0 installable package is distributed as a GitHub Release asset. Check [
 
 ## What it provides
 
-- **A shared workflow contract:** tracked Issues hold scope and authority; native Sub-Issues and dependencies express related work; a Dedicated User Project tracks `Backlog`, `Ready`, `In Progress`, `Review`, and `Done`; linked PRs carry changes, independent Review/QA, and integration evidence.
+- **A shared workflow contract:** tracked Issues hold the work contract and recorded authorization evidence; creating or opening an Issue alone does not authorize execution. Sub-Issues decompose independently tracked work, and Issue Dependencies represent actual blockers. A Dedicated User Project tracks `Backlog`, `Ready`, `In Progress`, `Review`, and `Done`; linked PRs carry changes, independent Review/QA, and integration evidence.
 - **Core Profile provisioning:** `inspect`, `plan`, `apply`, and `verify` reconcile Issues availability, a same-owner Dedicated User Project and its Status values, the `needs-decision` and `blocked` labels, and Project membership and lifecycle effects for the tracked Issues you select.
 - **Safe, observable changes:** Plan reads state without changing it. Apply checks that relevant managed state still matches the saved plan before making changes. Verify reads GitHub again. Compatible native state is reused, unrelated configuration is preserved, and a conforming repeat run plans no changes.
 
