@@ -61,7 +61,7 @@ github-workflow plan --owner OWNER --repo REPO --profile v0.1.0-core-profile --i
 
 ### 3. Apply the approved plan
 
-**Apply changes GitHub.** Continue only if the operations in `plan.json` are authorized. Apply checks current managed state against the saved Plan before acting; if it changed, inspect and plan again.
+**Apply changes to GitHub.** Continue only if the operations in `plan.json` are authorized. Apply checks current managed state against the saved Plan before acting; if it changed, inspect and plan again.
 
 ```text
 github-workflow apply --owner OWNER --repo REPO --profile v0.1.0-core-profile --issues issues.json --plan plan.json --format json > apply.json
