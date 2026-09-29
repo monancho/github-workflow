@@ -2,17 +2,19 @@
 
 ## Supported Versions
 
-There is no public release yet.
+| Version | Security support |
+| --- | --- |
+| `v0.1.0` | Supported from its GitHub Release publication |
 
-The first planned public release is `v0.1.0`. Supported-version information will be updated when public releases exist.
+No earlier public version is supported. Check [GitHub Releases](https://github.com/monancho/github-workflow/releases) for publication status.
 
 ## Reporting a Vulnerability
 
 Do **not** report suspected security vulnerabilities through a public GitHub issue, discussion, pull request, or other public channel.
 
-Use the repository's GitHub private vulnerability reporting flow when it is available.
+Use the repository's GitHub private vulnerability reporting flow in its Security tab.
 
-If private vulnerability reporting is temporarily unavailable during the initial repository bootstrap, do not disclose the vulnerability publicly. Wait until the private reporting channel is enabled before submitting sensitive details.
+If private vulnerability reporting is temporarily unavailable, do not disclose the vulnerability publicly. Wait until the private reporting channel is available before submitting sensitive details.
 
 ## What to Include
 
@@ -37,4 +39,4 @@ Security-sensitive behavior includes, but is not limited to:
 - unsafe provisioning behavior
 - supply-chain or dependency risks introduced by this project
 
-Security policy details may evolve as the implementation and release surface become concrete.
+Security policy details may evolve with later releases and new evidence.
