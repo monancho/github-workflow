@@ -1,5 +1,12 @@
 # github-workflow
 
+[![GitHub Release](https://img.shields.io/github/v/release/monancho/github-workflow?display_name=tag&label=GitHub%20Release)](https://github.com/monancho/github-workflow/releases)
+[![Portable CLI smoke](https://github.com/monancho/github-workflow/actions/workflows/platform-smoke.yml/badge.svg?branch=main)](https://github.com/monancho/github-workflow/actions/workflows/platform-smoke.yml?query=branch%3Amain)
+[![Node.js 22 | 24](https://img.shields.io/badge/Node.js-22%20%7C%2024-339933)](docs/DISTRIBUTION.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+**English** | [한국어](README.ko.md)
+
 **A GitHub-native work contract and setup tool for humans and AI agents.** Keep work in Issues, a dedicated Project, and pull requests so another person or agent can understand what is authorized, what is blocked, and what has been verified. The local CLI sets up and checks the v0.1.0 GitHub Core Profile; normal work continues in GitHub without a hosted service or a running `github-workflow` process.
 
 The v0.1.0 installable package is distributed as a GitHub Release asset. Check [Releases](https://github.com/monancho/github-workflow/releases) for its publication status and the `github-workflow-0.1.0.tgz` asset.
@@ -11,6 +18,25 @@ The v0.1.0 installable package is distributed as a GitHub Release asset. Check [
 - **Safe, observable changes:** Plan reads state without changing it. Apply checks that relevant managed state still matches the saved plan before making changes. Verify reads GitHub again. Compatible native state is reused, unrelated configuration is preserved, and a conforming repeat run plans no changes.
 
 The CLI is a provisioning tool, not an agent runner or an ongoing synchronizer. It does not select work, approve changes, merge PRs, or grant release authority.
+
+## How it works
+
+The work contract lives in native GitHub records. The CLI's separate setup cycle brings selected Core Profile state into line with that contract.
+
+```mermaid
+flowchart TB
+  subgraph Work[Work and authority]
+    direction LR
+    Issue["Tracked Issue<br/>contract and authorization evidence"] --> Project["Dedicated Project<br/>Status and blockers"]
+    Issue --> PR["Linked PR<br/>independent Review and QA"]
+    PR --> Merge{"Merge authority"}
+    Merge -->|granted| Reconcile["Integrate and reconcile Issue"]
+  end
+  subgraph Setup[Core Profile setup]
+    direction LR
+    Inspect --> Plan["Plan<br/>read only"] --> Apply["Apply<br/>authorized changes"] --> Verify["Verify<br/>fresh read"]
+  end
+```
 
 ## Requirements and installation
 
@@ -96,4 +122,8 @@ Organization-owned or private repositories, GitHub Enterprise Server, cross-owne
 | [Contributing](https://github.com/monancho/github-workflow/blob/main/CONTRIBUTING.md) | Repository execution, PR Review/QA, and merge authority. |
 | [Release guide](https://github.com/monancho/github-workflow/blob/main/docs/RELEASING.md) | Maintainer release gates and publication steps. |
 
-Licensed under [MIT](LICENSE). Report suspected vulnerabilities through the private path in the [security policy](SECURITY.md), not a public Issue or Discussion.
+## Getting help and contributing
+
+Open a [public Issue](https://github.com/monancho/github-workflow/issues) for non-sensitive bugs or usage questions, with the relevant CLI outcome, steps, and environment. Follow [CONTRIBUTING.md](https://github.com/monancho/github-workflow/blob/main/CONTRIBUTING.md) for proposed changes and PRs. Report suspected vulnerabilities only through the private path in the [security policy](SECURITY.md), not a public Issue or Discussion.
+
+Licensed under [MIT](LICENSE).
